@@ -1,4 +1,4 @@
-//设置crystal tools 中变量的初始值
+//Default values of some parameters
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:maxhkl",6)
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:mind",8.5)
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:max peak no",10)
@@ -12,7 +12,7 @@ if(!getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Spo
 		setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Spot size",spotsize)
 	}
 
-	number wavelength=0.1  //convert to XRD data
+number wavelength=0.1  //convert to XRD data based on Bragg's law
 if(!getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Wavelength",wavelength))
 	{
 		setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Wavelength",wavelength)
@@ -28,14 +28,13 @@ if(!getpersistentStringnote("ElectronDiffraction Tools:Crystal Tools:Default:Uni
 number d1,d2,Angle, h1=0,k1=0,l1=0,h2=0,k2=0,l2=0,u=0,v=0,w=0
 
 
-//-------------------------------Crystal tools中的函数
+//-------------------------------Define some functions-------------------------------
 
+// function: to match intensities of two spectrum
 image MatchSpectralIntensities(image frontspectrum, image backspectrum, number roileft, number roiright, number iterations)
 {
 if(iterations<10) iterations=10
 
-// If the ROI left and right values have a difference of zero, the entire image will be used for
-// intensity matching
 number xsize=frontspectrum.ImageGetDimensionSize(0)
 
 if((roiright-roileft)==0)
@@ -76,8 +75,7 @@ image scaledforespectrum=frontspectrum*finalmultiplier
 return scaledforespectrum
 }
 
-// Function to minimise the difference between the front spectrum and the back spectrum by
-// shifting the front relative to the back over a range of channel positions. 
+// Function: to minimise the difference between the front spectrum and the back spectrum
 image MatchSpectralChannels(image frontspectrum, image backspectrum, number roileft, number roiright)
 {
 number scanrange=roiright-roileft
@@ -107,7 +105,7 @@ return shiftedfore
 }
 
 
-
+// Function: to perform Gaussian filter of a FT image.
 image gaussfilter_FilterIt(image filter,number inixsize,number iniysize,number inix2,number iniy2, number gaura)
 {
 	image iniwarp:=RealImage("",8,inix2,iniy2)
@@ -130,6 +128,7 @@ image gaussfilter_FilterIt(image filter,number inixsize,number iniysize,number i
 	return final
 }
 
+//Function: to perform Gaussian filter of an image.
 image GaussFilter(image ini, number gaura)
 {
 image res 
@@ -167,56 +166,7 @@ if(ini.ImageIsDataTypeRGB())
 return res
 }
 
-void findcentreofgravity(image centralroi, number &cogx, number &cogy)
-	{
-			number xpos, ypos, maxval, imgsum, xsize, ysize, i
-			image tempimg
-
-			maxval=max(centralroi, xpos, ypos)
-			imgsum=sum(centralroi)
-
-			getsize(centralroi, xsize, ysize)
-
-			// 空白区域，设为中心处			
-			if(imgsum==0) 
-				{
-					cogx=(xsize-1)/2
-					cogy=(ysize-1)/2
-				}
-
-			//1D投影
-			image xproj=realimage("",4,xsize,1)
-			xproj[icol,0]+=centralroi
-
-			image yproj=realimage("",4,ysize, 1)
-			yproj[irow,0]+=centralroi 
-
-			yproj=yproj*(icol+1) // NB the +1 ensures that for the left column and top row, where
-			xproj=xproj*(icol+1) // icol=0 are included in the weighting. 1 must be subtracted from
-								// the final position to compensate for this shift
-			cogx=sum(xproj)
-			cogy=sum(yproj)
-			cogx=(cogx/imgsum)-1 // compensation for the above +1 to deal with icol=0
-			cogy=(cogy/imgsum)-1
-		}
-
-		
-// Create a 2D Gaussian function
-image GaussImage(number xsize, number sigma)
-{
-number x0,y0
-
-x0=0.5*(xsize+1)
-y0=0.5*(xsize+1)
-
-image gaussian=realimage("",4,xsize,xsize)
-gaussian=exp(-(icol-x0)**2/(2*sigma**2))*exp(-(irow-y0)**2/(2*sigma**2))
-gaussian=gaussian/gaussian.max()
-
-return gaussian
-}
-
-//计算profile的半高宽
+//Function: to calculate FWHM of a profile
 number fwhm(image img, number x,number &leftpart,number &rightpart)
 {
 number width,xsize,ysize,leftwidth,rightwidth
@@ -253,9 +203,7 @@ width=leftwidth+rightwidth
 return width
 }
 
-
-
-//函数：2D高斯函数
+//Function: to create 2D Gaussian image
 image Create2DGaussian(number xsize, number ysize, number centrex, number centrey, number intensity, number sigmax, number sigmay)
 	{
 		image gaussian=realimage("", 4,xsize, ysize)
@@ -266,15 +214,13 @@ image Create2DGaussian(number xsize, number ysize, number centrex, number centre
 	}
 
 
-// 函数：技术x2，拟合误差
+//Function: to compute chi squred x2 
 number computechisqrd(image original, image fit, number centrex, number centrey, number centralpcnt)
 	{
 		number xsize, ysize
 		getsize(original, xsize, ysize)
 		
-		
 		// Compare only subarea of the image - centred on the target centre.
-		
 		if(centralpcnt<25) centralpcnt=25
 		if(centralpcnt>75) centralpcnt=75
 		
@@ -287,7 +233,6 @@ number computechisqrd(image original, image fit, number centrex, number centrey,
 		
 		
 		// Define the search area centred on the target centre
-		
 		number t=round(centrey-(ydim/2))
 		number l=round(centrex-(xdim/2))
 		number b=round(centrey+(ydim/2))
@@ -307,18 +252,13 @@ number computechisqrd(image original, image fit, number centrex, number centrey,
 	}
 
 
-// 函数：用MonteCarlo方法自动寻找σ参数（高斯函数）
+//Function: to find the parameter sigma for Gaussian fitting by the Monte Carlo method.
 number FindSigmaMonteCarlo(image front, number centrex, number centrey, number subareapcnt, number intensity, number initialsigma, number iterations, number &minchisqrd, number &sigma)
 	{
 		// Source the image size
-
 		number xsize, ysize, chisqrd
 		getsize(front, xsize, ysize)
 		number i
-		
-		//if(centrex==0) centrex=xsize/2
-		//if(centrey==0) centrey=ysize/2
-
 
 		// random walk - vary the initial sigma with a random gaussian function and compute the fit for the resulting sigma		
 		for(i=0; i<iterations; i++)
@@ -334,35 +274,29 @@ number FindSigmaMonteCarlo(image front, number centrex, number centrey, number s
 						sigma=sigmatest
 						initialsigma=sigmatest
 					}	
-
 			}
 		return minchisqrd
 	}
 
 
-// 函数：Monte Carlo自动找中心
+// Function: to find the ceneter of a SAED pattern by the Monte Carlo method
 number FindCentreMonteCarlo(image front, number sigma, number intensity, number iterations, number centrex, number centrey, number subareapcnt, number &minchisqrd, number &fitcentrex, number &fitcentrey)
 	{
 		number xsize, ysize, chisqrd, newx, newy
 		getsize(front, xsize, ysize)
 		image testgaussian=front*0
 	
-	
 		// If no centre information is provided  estimate the centre as the geometric centre
-		
 		if(centrex==0) centrex=xsize/2
 		if(centrey==0) centrey=ysize/2
 		number i, randcentrex, randcentrey
 		fitcentrex=centrex
 		fitcentrey=centrey
 	
-	
 		// Do a random walk looking for an improved fit
-		
 		for(i=0; i<iterations; i++)
 			{
 				// vary the centres with a random walk
-				
 				randcentrex=gaussianrandom()
 				randcentrey=gaussianrandom()
 				newx=randcentrex+fitcentrex
@@ -370,15 +304,12 @@ number FindCentreMonteCarlo(image front, number sigma, number intensity, number 
 				
 				
 				// Ignore any values which take the centre outside the bounds of the image
-				
 				if(newx<0) randcentrex=0
 				if(newx>xsize-1) randcentrex=0
 				if(newy<0) randcentrey=0
 				if(newy>ysize-1) randcentrey=0
 			
-			
 				// test the fit with the new centre
-				
 				testgaussian=Create2DGaussian(xsize, ysize, newx,newy, intensity, sigma, sigma)
 				chisqrd=computechisqrd(front, testgaussian, newx, newy, subareapcnt)
 
@@ -394,7 +325,7 @@ number FindCentreMonteCarlo(image front, number sigma, number intensity, number 
 	}
 	
 	
-//计算半高宽
+//Function: to calculate FWHM of a profile
 number FWHMcalc(image img, number maxx)
 {
 number xpos, ypos, maxval, i,xsize,ysize,t,l,b,r
@@ -405,7 +336,7 @@ img.GetSelection(t,l,b,r)
 maxval=img.GetPixel(maxx,0)
 halfmax=maxval/1.7
 
-for(i=maxx; i>0; i--)  //左半高的位置
+for(i=maxx; i>0; i--)  //left part
 	{
 		number thisval=getpixel(img, i,0)
 		
@@ -417,7 +348,7 @@ for(i=maxx; i>0; i--)  //左半高的位置
 			}
 	}	
 
-for(i=maxx; i<xsize; i++)  //右半高的位置
+for(i=maxx; i<xsize; i++)  //right part
 	{
 		number thisval=getpixel(img, i,0)
 		
@@ -434,17 +365,14 @@ img.setselection(0,left,1,right)
 Return right-left
 }
 
-//定义函数tophatfilter函数
-
+//Function: to find peaks of a profile by the top hat method
 image tophatfilter(image inputimage, number defaultbrimwidth, number defaulthatwidth, number tophatthreshold, number PeakorTrough)
 	{ 
-		// 定义变量
 		number i,  brimmean, hatmean, tophatresult, x,no=1
 		number positivecounter, negativecounter, counter,nomax,nomin,leftpart,rightpart
 		image lowerbrim, upperbrim, hat
 		number previoussign=0	
 
-		// 归一化		
 		number maxval=max(inputimage)
 		inputimage=inputimage/maxval
 		number xsize, ysize
@@ -452,8 +380,8 @@ image tophatfilter(image inputimage, number defaultbrimwidth, number defaulthatw
 		
 		imagedisplay imgdisp=imagegetimagedisplay(inputimage,0)
 
-		//top hat 寻峰
-		for (i=1; i<(xsize-(defaulthatwidth+(2*defaultbrimwidth))); i++) //寻峰范围
+		//begin to find peaks
+		for (i=1; i<(xsize-(defaulthatwidth+(2*defaultbrimwidth))); i++) 
 			{
 				lowerbrim=inputimage[0,i,1,i+defaultbrimwidth]
 				upperbrim=inputimage[0,i+defaultbrimwidth+defaulthatwidth,1,i+defaultbrimwidth+defaulthatwidth+defaultbrimwidth]
@@ -463,7 +391,7 @@ image tophatfilter(image inputimage, number defaultbrimwidth, number defaulthatw
 				hatmean=mean(hat)
 				tophatresult=hatmean-brimmean
 				
-				number temptest=sqrt(tophatresult*tophatresult) //剔除负值
+				number temptest=sqrt(tophatresult*tophatresult) 
 		if(temptest<tophatthreshold || (sgn(tophatresult)!=previoussign && temptest>tophatthreshold))
 			{
 				if (positivecounter>0) // there is a positive peak
@@ -475,7 +403,7 @@ image tophatfilter(image inputimage, number defaultbrimwidth, number defaulthatw
 						
 						if(peak1>peakmax-5&&peak1<peakmax-5)peakmax=peak1
 
-						if (PeakorTrough==0 || PeakorTrough==2) //添加标记
+						if (PeakorTrough==0 || PeakorTrough==2) //mark it
 							{ 
 							roi theroi=createroi()
 							theroi.roisetrange(peakmax, peakmax)
@@ -518,7 +446,7 @@ image tophatfilter(image inputimage, number defaultbrimwidth, number defaulthatw
 						negativecounter=0
 					}			
 
-				if((-1*tophatresult)>tophatthreshold)	// 有谷
+				if((-1*tophatresult)>tophatthreshold)	//indicates a trough detected
 					{
 						negativecounter=negativecounter+i
 						positivecounter=0
@@ -534,146 +462,7 @@ inputimage=inputimage*maxval
 return(inputimage)			
 }
 
-
-
-//定义线性回归函数
-void linearregression(image xdata, image ydata, number &aparameter, number &bparameter, number &Rvalue, number &confidence95,number &stderror)
-		{
-			number ysize, novals, meanx, meany, xdiff, ydiff, sigma, i, delta, studentt,xvalue,yvalue
-			number xdiffsqrd, ydiffsqrd, difftopsum, diffbottomsum, sumxsqrd, sumxallsqrd, residsumsqrd
-			number sumysqrd, sumyallsqrd, sumofx, sumofy, sumofxtimesy
-		
-			getsize(xdata, novals, ysize)
-			
-			// Get the mean values in x and y
-			meanx=xdata.mean()
-			meany=ydata.mean()
-			
-			// Loop through the data calculating the linear regression parameter
-			for(i=0; i<novals; i++)
-				{
-					xvalue=getpixel(xdata, i,0)
-					yvalue=getpixel(ydata, i,0)
-					
-					ydiff=(yvalue-meany)
-					xdiff=(xvalue-meanx)
-
-					xdiffsqrd=(xvalue-meanx)*(xvalue-meanx)
-					ydiffsqrd=ydiffsqrd+(yvalue-meany)**2
-
-					difftopsum=difftopsum+(xdiff*ydiff)
-					diffbottomsum=diffbottomsum+xdiffsqrd
-
-					sumxsqrd=sumxsqrd+xvalue**2
-					sumysqrd=sumysqrd+yvalue**2
-
-
-					sumofx=sumofx+xvalue
-					sumofy=sumofy+yvalue
-
-					sumofxtimesy=sumofxtimesy+(xvalue*yvalue)
-				}
-	
-			sumxallsqrd=sumofx**2
-			sumyallsqrd=sumofy**2
-
-			// Calculate the a and b parameters of the straight line equation
-			bparameter=difftopsum/diffbottomsum
-			aparameter=meany-(bparameter*meanx)
-			
-			// Calculate the 95% confidence interval
-			delta=(novals*sumxsqrd)-sumxallsqrd
-			
-			// Loop through the data calculating the residuals
-			for(i=0; i<novals; i++)
-				{
-					xvalue=getpixel(xdata, i,0)
-					yvalue=getpixel(ydata, i,0)
-					
-					residsumsqrd=residsumsqrd+((aparameter+bparameter*xvalue)-yvalue)**2
-				}	
-			
-			sigma=sqrt(residsumsqrd/(novals-2-1))
-
-			// Calculate the student t value for 95% confidence. This is done via a polynomial fitted to the student T data
-			// note the student t lookup tables is for values of v = where v=no of samples (novals) -degrees of freedom (2 in this case) -1
-			// so when the novals is 6 - the value of v against which student t is looked up is 3
-			
-			if(novals-3>20) // the limit of the polynomial data fitted is to a value of v=20 (remember v=samples-degs freedom-1)
-				{
-					studentt=1.7
-				}
-			else
-				{
-					// v values 1 and 2 were ommitted from the polynomial as they resulted in a poor fit
-					// so set these values manually
-
-					if((novals-3)<=1)			
-						{
-							studentt=6.314
-						}
-
-					if((novals-3)==2)
-						{
-							studentt=2.92
-						}
-				}			
-
-			// The range of the polynomial fit is novals between 3 and 20 incl
-			studentt=4.8872+(-1.7789*novals)+(0.48731*novals**2)+(-0.077976*novals**3)+(0.00773*novals**4)+(-0.0004808*novals**5)+(1.8253e-5*novals**6)+(-3.864e-7*novals**7)+(3.4938e-9*novals**8)
-
-			confidence95=studentt*sigma*sqrt((novals/delta))
-			
-			// Compute the R value
-			Rvalue=((novals*sumofxtimesy)-(sumofx*sumofy))/sqrt(((novals*sumxsqrd)-sumxallsqrd)*((novals*sumysqrd)-sumyallsqrd))			
-			// Compute the standard error
-			number sumydiff, sumydiffsqrd, sumxdiff, sumxdiffsqrd, sumxydiff
-			
-			for(i=0; i<novals; i++)
-				{
-					yvalue=getpixel(ydata,i,0)
-					xvalue=getpixel(xdata,i,0)
-		
-					sumydiff=sumydiff+(yvalue-meany)
-					sumxdiff=sumxdiff+(xvalue-meanx)
-		
-					sumydiffsqrd=sumydiffsqrd+(yvalue-meany)**2
-					sumxdiffsqrd=sumxdiffsqrd+(xvalue-meanx)**2
-
-					sumxydiff=sumxydiff+((xvalue-meanx)*(yvalue-meany))
-				}
-				
-			if(novals>2) // trap to avoid divide by 0 error for data sets smaller than 3
-				{
-					stderror=sqrt(((1/(novals-2))*(sumydiffsqrd-(sumxydiff**2/sumxdiffsqrd))))
-				}
-
-			return
-		}	
-		
-		
-//函数：圆形选区
-ROI CreateCircleROI(Number cx, Number cy, Number radius, Number points)
-{
-Number px, py, phi, count
-ROI proi = NewRoi()
-proi.ROISetName("CircleROI_r"+radius+"_p"+points) // name the ROI including creation paramters
-If (points<3) points = Trunc(2*Pi()*radius / abs(points))+1 // calculate number of vertices on circle
-points=max(points,3)
-For (count=0; count<points; count++) // calculate vertices on circle
-{
-phi = count * 2*Pi()/points
-px = cx+radius*Cos(phi)
-py = cy+radius*Sin(phi)
-proi.ROIAddVertex(px,py)
-}
-pROI.ROISetIsClosed(1) // connect first with last vertex
-return pROI
-}
-
-	
-	
-// 定义边缘平滑函数函数
+//Function: to create damped edges of an image
 image createdampededge(number edgewidth, number ximagewidth, number yimagewidth)
 	{
 		// The left hand edge		
@@ -705,33 +494,27 @@ image createdampededge(number edgewidth, number ximagewidth, number yimagewidth)
 	}
 	
 	
-//CoarseFit用于粗略拟合衍射峰
+//Function: to perform a quick Gaussian fitting
 void CoarseFit(image image1D, number weighting, number &peakintensity, number &peakchannel, number &sigma, number &fwhm)
 	{
-		// 只对1D profile拟合
 		number xsize, ysize
 		getsize(image1D, xsize, ysize)
 		image1D.SetSelection(0,0.3*xsize,1,0.7*xsize)
 		
-		// ROI边界
 		number t,d,l, r  //d-down
 		image1D.getselection(t,l,d,r)
 
-		// 定义gaussian拟合参数
 		number origin, dispersion
 		number xmax, ymax, i, channel, intensity
 		number c1, c2, c3, c4, c5, yx2, yx1, yx0
 		number delta, a, b, c, alpha,fitintensity
 		string imgname
 
-		// 为便于归一化，需要图像类型转换
 		converttofloat(image1D)
 
-		// 对峰值归一化
 		number peakmax=max(image1D, xmax, ymax)
 		image1D=image1D/peakmax
 
-		// 进行最小二乘法拟合
 		for (i=l; i<r; i++)
 			{
 				intensity=getpixel(image1D, i, 0)
@@ -757,40 +540,29 @@ void CoarseFit(image image1D, number weighting, number &peakintensity, number &p
 		peakintensity=peakmax*exp(c+peakchannel**2/(2*sigma**2))
 		fwhm=2*sigma*sqrt(2*log(2))
 		
-		//保存参数
-		//Setpersistentnumbernote("ElectronDiffraction Tools:temp:Peak:fwhm",fwhm)
-		//Setpersistentnumbernote("ElectronDiffraction Tools:temp:Peak:peak channel",peakchannel)	
-		
 		image1D.ClearSelection()
 }
 
-// 函数: Gaussian fit，用于精确拟合衍射峰
+//Function: to perform Gaussian fitting of an image.
 image FitGaussian(image image1D, number weighting, number &peakintensity, number &peakchannel, number &sigma, number &fwhm, number &Rp)
 {
-//imagedisplay imgdisp=image1D.imagegetimagedisplay(0)
 number xsize,ysize
 image1D.GetSize(xsize,ysize)
-//image1D.SetSelection(0,0.2*xsize,1,0.8*xsize)
 
-// 得到ROI边界
 number t,d,l, r
 image1D.getselection(t,l,d,r)
 
-// 定义gaussian拟合参数
 number origin, dispersion
 number xmax, ymax, i, channel, intensity
 number c1, c2, c3, c4, c5, yx2, yx1, yx0
 number delta, a, b, c, alpha, fitintensity
 string imgname
 
-// 为便于归一化，需要图像类型转换
 converttofloat(image1D)
 
-// 对峰值归一化
 number peakmax=max(image1D, xmax, ymax)
 image1D=image1D/peakmax
 
-// 进行最小二乘法拟合
 for (i=l; i<r; i++)
 {
 intensity=getpixel(image1D, i, 0)
@@ -816,46 +588,24 @@ peakchannel=b*sigma*sigma
 peakintensity=peakmax*exp(c+peakchannel**2/(2*sigma**2))
 fwhm=2*sigma*sqrt(2*log(2))
 
-
-// 对归一化后的图像进行还原
 image1D = image1D*peakmax
 
-// 计算拟合峰
 image peakfit=image1D*0
-image Rpimage=image1D*0   //用于Rp因子的计算
+image Rpimage=image1D*0   //calculate Rp
 
 for (i=l; i<r; i++)
 {
 fitintensity=peakintensity*exp(-((i-peakchannel)**2)/(2*sigma**2))
 setpixel(peakfit, i, 0,fitintensity)
-
-/*
-if(i>(peakchannel-fwhm)&&i<(peakchannel+fwhm))
-{
-number delta=abs(image1D.getpixel(i,0)-fitintensity)
-setpixel(Rpimage, i, 0,delta)
-}
-*/
 }
 
 Rp=sum((image1D[t,l,d,r]-peakfit[t,l,d,r])**2/(image1D[t,l,d,r]+0.000001))
-//Rp=sum((image1D[t,l,d,r]-peakfit[t,l,d,r])**2/(image1D[t,l,d,r]+0.000001)**2)
-//Rpimage=sum(abs(image1D[])-abs(peakfit[]))/sum(abs(image1D[]))
-//Rp=sum(abs(image1D[t,l,d,r])-abs(peakfit[t,l,d,r]))/sum(abs(image1D[t,l,d,r]))
-//result(Rp+",-----------"+peakchannel+"\n")
-//imgDisp.ImageDisplayAddimage(peakfit, "")
-//OkDialog(""+rp)
-//imgDisp.ImageDisplayAddimage(peakfit, "GF (Rp="+Rp+",  W="+weighting+ ")");
-//imgDisp.LinePlotImageDisplaySetLegendShown(1)
-
-//保存到缓存
-//setpersistentnumbernote("ElectronDiffraction Tools:temp:delta:"+Rp+":Rp",Peakchannel)
 
 return peakfit
 }
 
 
-// 函数：在缓存中新建晶体学标签
+// Function: to create tags of the daily used crystals
 void createcrystaltags(string crystalname, number lattice, number a, number b, number c, number alpha, number beta, number gamma)
 {
 string lattices
@@ -870,31 +620,19 @@ if(!getpersistentstringnote("ElectronDiffraction Tools:Crystal Tools:Crystals",l
 	setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Crystals:"+crystalname+":gamma",gamma)
 }
 
-//晶系的定义：cubic=1、tetragonal=2、orthorhombic=3、hexagonal=4、rhombohedral=5,monoclinic=6、triclinic=7，以及常用晶体学数据：
-
-//createcrystaltags("Au-Gold", 1, 4.078, 4.078, 4.078, 90, 90, 90) // Gold
-
-//createcrystaltags("C-Carbon-Graphite", 4, 2.461, 2.461, 6.708, 90, 90, 120)// Carbon - graphite
-
-//createcrystaltags("Si-Silicon", 1, 5.4282, 5.4282, 5.4282, 90, 90, 90)// Silicon
-
-//createcrystaltags("TiO2-anatase", 2, 3.7852, 3.7852, 9.5139, 90, 90, 90)// TiO2 - anatase
-
-//createcrystaltags("TiO2-brookite", 3, 5.4558, 9.1819, 5.1429, 90, 90, 90)// TiO2 - brookite
-
-//createcrystaltags("TiO2-rutile", 2, 4.5933, 4.5933, 2.9592, 90, 90, 90)// TiO2 - rutile
-
+//The seven crystal systems: cubic=1、tetragonal=2、orthorhombic=3、hexagonal=4、rhombohedral=5,monoclinic=6、triclinic=7
+createcrystaltags("Au-Gold", 1, 4.078, 4.078, 4.078, 90, 90, 90) // Gold
+createcrystaltags("Si-Silicon", 1, 5.4282, 5.4282, 5.4282, 90, 90, 90)// Silicon
+createcrystaltags("TiO2-anatase", 2, 3.7852, 3.7852, 9.5139, 90, 90, 90)// TiO2 - anatase
+createcrystaltags("TiO2-brookite", 3, 5.4558, 9.1819, 5.1429, 90, 90, 90)// TiO2 - brookite
+createcrystaltags("TiO2-rutile", 2, 4.5933, 4.5933, 2.9592, 90, 90, 90)// TiO2 - rutile
 createcrystaltags("R-CaCO3", 4, 4.978, 4.978, 16.978, 90, 90, 120)// CaCO3 - R
-
 createcrystaltags("R-CaO", 1, 4.8049, 4.8049, 4.8049, 90, 90, 90)// CaO
 
-// 晶体学数据写入后，Tags Exist=1
-//setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Crystals:ZZZ Exist",1)
-//---------------------常用晶体学数据已写入完毕
 
 Object CrystUIFrame
-//-----------------------新建一些对话框----------------------------
-// 对话框：晶系选择
+
+//Function: to create a radio dialog to set crystal system
 TagGroup MakeCrystTypeRadios()
 	{
 		Taggroup crystradio_items
@@ -911,25 +649,22 @@ TagGroup MakeCrystTypeRadios()
 		return crysttyperadio	
 	}
 	
-// 对话框：晶体选择
+// Function: to create a pull down dialog
 TagGroup MakeElementPullDown()
 {
 	TagGroup popup_items
 	TagGroup popup = DLGCreatePopup(popup_items, 0, "elementselect")
-	//popup_items.DLGAddPopupItemEntry("")
 
 	string crystalname
 	
-	// 从缓存中读取晶体信息
+	// read tags
 	taggroup ptg=getpersistenttaggroup()
 	taggroup crystaltags
 	ptg.TaggroupGetTagAsTagGroup("ElectronDiffraction Tools:Crystal Tools:Crystals", crystaltags)
 
-	//数一下有多少条晶体数据
 	number count=crystaltags.taggroupcounttags()
 	number i, lattice, a, b, c, alpha, beta, gamma
 
-	//读取数据
 	for(i=0; i<count; i++)
 	{
 		String label = crystaltags.TagGroupGetTagLabel( i ) 
@@ -948,69 +683,18 @@ TagGroup MakeElementPullDown()
 	return popup
 }
 
-//新建list1
-TagGroup MakeList1()
-{
-//从图像中获取list1的d值表
-	number peakno
-	image img:=getfrontimage()	
-
-	
-	//新建list1
-	TagGroup hkllist1,hklListItems1
-	hkllist1=DLGCreatelist(hklListItems1,"List1changed",20,5)
-	
-	//从缓存中读取d值表，写入list1中
-	taggroup tg=img.ImageGetTagGroup()
-	TagGroup tg1
-	tg.TagGroupGetTagAsTagGroup("ElectronDiffraction Tools:List1",tg1)
-	peakno = tg1.TagGroupCountTags( )
-	for(number i=1;i<peakno+1;i++)
-	{
-	getnumbernote(img,"ElectronDiffraction Tools:List1:peak"+i+":d",d1)
-	getnumbernote(img,"ElectronDiffraction Tools:List1:peak"+i+":h",h1)
-	getnumbernote(img,"ElectronDiffraction Tools:List1:peak"+i+":k",k1)
-	getnumbernote(img,"ElectronDiffraction Tools:List1:peak"+i+":l",l1)
-	hkllist1.DLGAddListItem("("+h1+","+k1+","+l1+"),  "+d1,1)
-	}
-
-	hkllist1.DLGIdentifier("List1")
-
-	return hkllist1
-}
-
-// 对话框：生成 年月日
-string createversionstring()
-	{		
-		string todaysdate, microscopestring="1", temp
-		getdate(0,todaysdate)
-
-		number length=len(todaysdate)
-		if(length<10) todaysdate="0"+todaysdate
-
-		string year = right(todaysdate,4)
-		string month = mid(todaysdate,3,2)
-		string day = left(todaysdate,2)
-
-		string currentdatestring=year+month+day
-		return currentdatestring
-	}
-	
-
-// --------------------------动作响应    类-------------------------
+// --------------------------Class: electron diffraction tools-------------------------
 Class ElectronDiffracion_Tools: UIFrame
 {
-//------------------------------------定义各种按钮的功能------------------------
-
-//---------------------以下用于定义crystal tools中的函数-----------------
-// 函数：菱方-六角
+//---------------------Define some function in this class-----------------
+//Function: to convert rhombhedral to hexagonal
 void rhombtohexconversion(object self, number rhombalpha, number arhomb, number &ahex, number &chex)
 	{
 		ahex=2*arhomb*sin(rhombalpha/2)
 		chex=sqrt(3)*sqrt(arhomb**2+(2*arhomb**2*cos(rhombalpha)))
 	}
 
-// 函数：六角-菱方
+// Function: to convert hexagonal to rhombhedral
 void hextorhombconversion(object self, number ahex, number chex, number &rhombalpha, number &arhomb)
 	{
 		arhomb=(1/3)*sqrt((3*ahex**2)+chex**2)
@@ -1021,17 +705,15 @@ void hextorhombconversion(object self, number ahex, number chex, number &rhombal
 	}
 
 	
-// 子界面切换时，按钮激活与否
+// Function: to change crystal tabs.
 	void crysttabchanged(object self, taggroup tg)
 	{
 		number tabvalue
 		tg.dlggetvalue(tabvalue)
 		
-		//d-spacing界面所有按钮都可用
 		if(tabvalue==0) 	self.setelementisenabled("Add_pattern",1) // the Tables button is disabled for all but dspacings
 		else self.setelementisenabled("Add_pattern",0)
 		
-		//切换到带轴界面时，显示操作提示
 		if(tabvalue==3) 
 			{
 				//result("\nZone Axis Calculation: (h2,k2,l2) should be anticlockwise relative to (h1,k1,l1)\n")
@@ -1039,32 +721,32 @@ void hextorhombconversion(object self, number ahex, number chex, number &rhombal
 	}
 
 
-	// 函数：a、b、c改变
+	// Function: response when changing lattice parameters a, b, and c.
 	void latticechanged(object self, taggroup tg)
 	{
 			number crystalvalue, latticevalue
-			latticevalue=tg.dlggetvalue() // 读取晶格常数的输入值
+			latticevalue=tg.dlggetvalue() 
 
 			self.dlggetvalue("crystalradios", crystalvalue)
 
-			if(crystalvalue==2|| crystalvalue==4) //自动设置四方、六角 a=b/=c
+			if(crystalvalue==2|| crystalvalue==4) // set a=b for tetragonal and hexagonal
 				{
 					self.dlgvalue("afield", latticevalue)
 					self.dlgvalue("bfield", latticevalue)
 				}
 
-			if(crystalvalue==1 || crystalvalue==5) //自动设置立方、菱方 a=b=c
+			if(crystalvalue==1 || crystalvalue==5) //set a=b=c for cubic and rhombhedral
 				{
 					self.dlgvalue("afield", latticevalue)
 					self.dlgvalue("bfield", latticevalue)
 					self.dlgvalue("cfield", latticevalue)
 				}
 				
-//清除所有list			
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+//Clear all data
+	TagGroup TgList1= self.LookUpElement("hklList1")  
+	TagGroup TgList2= self.LookUpElement("hklList2")  
+	TagGroup uvwList= self.LookUpElement("uvwList") 
+	uvwList.DLGRemoveElement(0)  
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -1095,36 +777,35 @@ void hextorhombconversion(object self, number ahex, number chex, number &rhombal
 	}
 
 
-	// // 函数：α、β、γ改变
-
+	// Function: response when changing lattice parameters α, β and γ.
 	void alphachanged(object self, taggroup tg)
 	{
 		number alphaval, crystalvalue
 		alphaval=tg.dlggetvalue()
 		self.dlggetvalue("crystalradios", crystalvalue)
 
-		if(crystalvalue==1 || crystalvalue==2 || crystalvalue==3) // 自动设置立方、四方、正交90°
+		if(crystalvalue==1 || crystalvalue==2 || crystalvalue==3) // set α= β= γ=90 for cubic, tetragonal and orthogonal 
 		{
 			self.dlgvalue("alphafield",90)
 			self.dlgvalue("betafield",90)
 			self.dlgvalue("gammafield",90)
 		}
 
-		if(crystalvalue==4) // 自动设置六角
+		if(crystalvalue==4) // set α= β=90,  γ=120 for hexagonal 
 		{
 			self.dlgvalue("alphafield",90)
 			self.dlgvalue("betafield",90)
 			self.dlgvalue("gammafield",120)
 		}
 
-		if(crystalvalue==5) //自动设置菱方
+		if(crystalvalue==5) //set α= β= γ for rhombhedral
 		{
 			if(alphaval!=90 && alphaval<120)
 				{
 					self.dlgvalue("betafield",alphaval)
 					self.dlgvalue("gammafield",alphaval)
 				}
-			else //角度不能是=90 or >=120degs
+			else
 				{
 					beep()
 					self.dlgvalue("alphafield",0)
@@ -1133,18 +814,17 @@ void hextorhombconversion(object self, number ahex, number chex, number &rhombal
 				}
 		}
 
-	if(crystalvalue==6) //单斜
+	if(crystalvalue==6) //set α= γ=90 for monoclinic
 		{
 			self.dlgvalue("alphafield",90)
 			self.dlgvalue("gammafield",90)
 		}
 
-	// 三斜晶系不用特殊设置	
-//清除所有list			
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+	// Clear all data			
+	TagGroup TgList1= self.LookUpElement("hklList1")
+	TagGroup TgList2= self.LookUpElement("hklList2")
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0) 
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -1173,51 +853,44 @@ void hextorhombconversion(object self, number ahex, number chex, number &rhombal
 	}		
 	}
 
-// d1改变
+// Function: to response when d1 is changed
 	void d1changed(object self, taggroup tg)
 	{
 	image img:=getfrontimage()	
 	Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",d1)
-	//self.lookupElement("d1field").dlgtitle("  "+ format(d1, "%2.4f" )) 
 	self.dlgvalue("d1field",d1)
 	self.validateview()
 	}	
 	
-// d2改变
+// Function: to response when d2 is changed
 	void d2changed(object self, taggroup tg)
 	{
 	image img:=getfrontimage()	
 	Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d2",d2)	
-	//self.lookupElement("d2field").dlgtitle("  "+ format(d2, "%2.4f" )) 
 	self.dlgvalue("d2field",d2)
 	self.validateview()
 	}	
 	
-// Angle改变
+// Function: to response when Angle is changed
 	void Anglechanged(object self, taggroup tg)
 	{
 	image img:=getfrontimage()	
 	Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",Angle)	
-	//self.lookupElement("Anglefield").dlgtitle("  "+ format(Angle, "%6.2f" )) 
 	self.dlgvalue("Anglefield",Angle)
 	self.validateview()
 	}		
 
 
-	
-	// 函数：清除所有输入值
+// Function: to clear all the user-defined data
 void clearfields(object self)
 		{
-		// 晶体名字
 		self.dlgvalue("crystalnamefield","")
 
-		// dspacing面板
 		self.lookupElement("dspacingfield").dlgtitle("  "+ format(0, "%7.4f"+" A")) 
 		self.dlgvalue("dhfield",0)
 		self.dlgvalue("dkfield",0)
 		self.dlgvalue("dlfield",0)
 		
-		// 晶面夹角
 		self.dlgvalue("angh1field",0)
 		self.dlgvalue("angk1field",0)
 		self.dlgvalue("angl1field",0)
@@ -1227,7 +900,6 @@ void clearfields(object self)
 		self.dlgvalue("angl2field",0)
 		self.lookupElement("angleresultfield").dlgtitle(""+ format(0, "%6.2f"+"deg.")) 
 		
-		// 晶向夹角
 		self.dlgvalue("diru1field",0)
 		self.dlgvalue("dirv1field",0)
 		self.dlgvalue("dirw1field",0)
@@ -1237,7 +909,6 @@ void clearfields(object self)
 		self.dlgvalue("dirw2field",0)
 		self.lookupElement("dirresultfield").dlgtitle(""+ format(0, "%6.2f"+"deg.")) 
 		
-		// 带轴面板
 		self.dlgvalue("zoneh1field",0)
 		self.dlgvalue("zonek1field",0)
 		self.dlgvalue("zonel1field",0)
@@ -1250,7 +921,7 @@ void clearfields(object self)
 	}
 
 
-	//函数：对指数进行归一化
+//Function: to normalize indices
 	number normaliseindices(object self, number &x, number &y, number &z)
 	{
 		number i, origx, origy, origz, divisor
@@ -1269,7 +940,6 @@ void clearfields(object self)
 				}
 			}
 
-		// 计算出最大公约数
 		number scaledx, scaledy, scaledz
 		if(origx!=0) scaledx=origx/x
 		else scaledx=1
@@ -1286,10 +956,10 @@ void clearfields(object self)
 		return divisor
 	}
 
-	// Clear按钮的作用
+//Function: to delete the saved crystal data
 	void crystclearbutton(object self)
 	{
-	// ALT+Clear，清空后添加已知数据文件
+	// ALT+Clear: delete the selected crystal
 	if(optiondown()) 
 		{
 			showalert("Select a Crystal file to load.",2)
@@ -1297,10 +967,8 @@ void clearfields(object self)
 			taggroup loadedtags=newtaggroup()
 			string path, extension, filelabel, version, filename
 			
-			//文件浏览
 			if(!opendialog(path)) return
 
-			// 文件类型(*.txt)
 			extension=pathextractextension(path,0)
 			filename=pathextractfilename(path,0)
 			if(extension!="txt") 
@@ -1309,22 +977,14 @@ void clearfields(object self)
 					return
 				}
 	
-			// 读取文件，看文件中是否含有"CrystalTools Settings"
-			//taggrouploadfromfilewithlabel(loadedtags, path, filelabel)
-			//if(filelabel!="CrystalTools Settings")
-				//{
-				//	showalert("This is not a Crystal Tools settings file!",1)
-				//	return
-			//	}
 
-			// 提示对话框
 			if(!twobuttondialog("Do you want to replace any existing crystal data with : "+filename,"Add","Cancel"))
 				{
 					showalert("Cancelled by user.",2)
 					return
 				}
 
-			//删除原始tag，添加新tag
+			//delete all tags
 			taggroup ptags=getpersistenttaggroup()
 			taggroup EDTags
 			ptags.taggroupgettagastaggroup("ElectronDiffraction tools", EDTags)
@@ -1335,7 +995,7 @@ void clearfields(object self)
 			return
 		}
 
-//清除主界面的晶体学数据
+//clear all the user-defined data
 		self.dlgvalue("dhfield",0)
 		self.dlgvalue("dkfield",0)
 		self.dlgvalue("dlfield",0)
@@ -1350,14 +1010,12 @@ void clearfields(object self)
 
 		self.dlgvalue("crystalradios",0)
 
-		//清除所有hkl, uvw 和子界面中所显示的数值
 		crystUIFrame.clearfields()
 	
-//清除所有list	
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+	TagGroup TgList1= self.LookUpElement("hklList1") 
+	TagGroup TgList2= self.LookUpElement("hklList2") 
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0)  
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -1388,46 +1046,45 @@ void clearfields(object self)
 	}
 
 
-	//函数：crystalchanged
+//Function: to response when the crystal (pull-down list) is changed
 	void crystalchanged(object self, taggroup tg)
 	{
-		// 清空
 		crystUIFrame.clearfields()
 		
-		//重新设值
+		//to set lattice parameters for different type of crystal system
 		number crystalvalue
-		crystalvalue=tg.dlggetvalue()  //获取晶系
-				if(crystalvalue==1 || crystalvalue==2 || crystalvalue==3 ) // 立方、四方、正交
+		crystalvalue=tg.dlggetvalue() 
+				if(crystalvalue==1 || crystalvalue==2 || crystalvalue==3 ) // Cubic, tetragonal, orthogonal
 					{
 						self.dlgvalue("alphafield", 90)
 						self.dlgvalue("betafield", 90)
 						self.dlgvalue("gammafield", 90)
 					}
 
-				if(crystalvalue==4) // 六角
+				if(crystalvalue==4) // hexagonal
 					{
 						self.dlgvalue("alphafield", 90)
 						self.dlgvalue("betafield", 90)
 						self.dlgvalue("gammafield", 120)
 					}
 					
-				if(crystalvalue==5 || crystalvalue==7) // 菱方
+				if(crystalvalue==5 || crystalvalue==7) // rhombhedral
 					{
 						self.dlgvalue("alphafield", 0)
 						self.dlgvalue("betafield", 0)
 						self.dlgvalue("gammafield", 0)
 					}
 
-				if(crystalvalue==6) // 单斜
+				if(crystalvalue==6) // monoclinic
 					{
 						self.dlgvalue("alphafield", 90)
 						self.dlgvalue("betafield", 0)
 						self.dlgvalue("gammafield", 90)
 					}
 
-				// 如果没选中晶体，清空a、b、c
+				// if the selected list is none, set default values
 				number pulldownvalue
-				taggroup pulldown=self.lookupelement("elementpulldown") //晶体选择
+				taggroup pulldown=self.lookupelement("elementpulldown")
 				self.dlggetvalue("elementpulldown", pulldownvalue)
 				
 				string pdname
@@ -1442,11 +1099,11 @@ void clearfields(object self)
 			
 				self.validateview()
 
-//清除所有list				
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+//clear all the list				
+	TagGroup TgList1= self.LookUpElement("hklList1")
+	TagGroup TgList2= self.LookUpElement("hklList2")
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0)  
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -1474,17 +1131,16 @@ void clearfields(object self)
 	deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List2")
 	}					
 				
-				
 	}
 
 
-	//*********************Calc按钮*******************
+	//*********************Calc. button in d-hkl pannel*******************
 	void calculatedspacing(object self)
 	{
 		number crystalvalue, alpha, beta, gamma, a, b, c, h, k, l, dspacing
 		string crystalname
 
-		// 读取数据
+		//read lattice parameters
 		self.dlggetvalue("crystalradios",crystalvalue)
 		self.dlggetvalue("alphafield",alpha)
 		self.dlggetvalue("betafield",beta)
@@ -1497,7 +1153,6 @@ void clearfields(object self)
 		self.dlggetvalue("dkfield",k)
 		self.dlggetvalue("dlfield",l)
 
-		// 角度转换 
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
@@ -1508,7 +1163,7 @@ void clearfields(object self)
 				exit(0)
 			}
 
-		// 根据hkl计算d值
+		// calculate d-spacing for a given hkl.
 		if(crystalvalue==1)  
 			{
 				dspacing=sqrt(a**2/(h**2+k**2+l**2))
@@ -1569,17 +1224,14 @@ void clearfields(object self)
 				crystalname="Triclinic"
 			}
 
-		//显示结果
 		self.lookupElement("dspacingfield").dlgtitle("  "+ format(dspacing, "%7.4f"+" A" )) 
-		
-		//在result window中输出结果
 		result("\n("+h+","+k+","+l+"), "+"d="+format(dspacing, "%2.4f")+" A\n")
 
 		self.validateview()
 	}
 
 
-//*****************************计算晶面夹角*******************************************
+//*****************************Function: Planes pannel*******************************************
 	void calculateplaneangles(object self)
 	{
 		number crystalvalue, alpha, beta, gamma, a, b, c, h1, k1, l1,h2,k2,l2, u,v,w,angle
@@ -1587,6 +1239,7 @@ void clearfields(object self)
 
 		string crystalname, material
 
+		// read lattice parameters and planes
 		self.dlggetvalue("crystalradios",crystalvalue)
 		self.dlggetvalue("alphafield",alpha)
 		self.dlggetvalue("betafield",beta)
@@ -1603,22 +1256,12 @@ void clearfields(object self)
 		self.dlggetvalue("angk2field",k2)
 		self.dlggetvalue("angl2field",l2)
 
-		// 角度转换 
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 
-		/*
-		// 不能为000
-		if(a<=0 || b<=0 || c<=0 || (h1**2+k1**2+l1**2==0) || (h2**2+k2**2+l2**2==0) || alpha<=0 || beta<=0 || gamma<=0)
-			{
-				beep()
-				exit(0)
-			}
-*/
-
-		// 开始计算晶面夹角	
-		if(crystalvalue==1) //立方
+		// begin to calculate d-spacings and interAngle	
+		if(crystalvalue==1) //cubic
 			{
 				number costheta, temp1, temp2
 				temp1=(h1*h2)+(k1*k2)+(l1*l2)
@@ -1628,14 +1271,13 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				d1=sqrt(a**2/(h1**2+k1**2+l1**2))
 				d2=sqrt(a**2/(h2**2+k2**2+l2**2))
 				
 				crystalname="Cubic"
 			}
 
-		if(crystalvalue==2) // 四方
+		if(crystalvalue==2) // Tetragonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=((1/a**2)*((h1*h2)+(k1*k2)))+((1/c**2)*l1*l2)
@@ -1647,7 +1289,6 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				number temp=((1/a**2)*(h1**2+k1**2))+((1/c**2)*l1**2)
 				d1=sqrt(1/temp)
 				
@@ -1657,7 +1298,7 @@ void clearfields(object self)
 				crystalname="Tetragonal"
 			}
 
-		if(crystalvalue==3) //正交
+		if(crystalvalue==3) //Orthogonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=((1/a**2)*h1*h2)+((1/b**2)*k1*k2)+((1/c**2)*l1*l2)
@@ -1669,7 +1310,6 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				number temp=(((1/a**2)*h1**2)+((1/b**2)*k1**2)+((1/c**2)*l1**2))
 				d1=sqrt(1/temp)
 				
@@ -1679,7 +1319,7 @@ void clearfields(object self)
 				crystalname="Orthorhombic"
 			}
 
-		if(crystalvalue==4) // 六角
+		if(crystalvalue==4) // Hexagonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=(h1*h2)+(k1*k2)+(0.5*((h1*k2)+(k1*h2)))+(((3*a**2)/(4*c**2))*l1*l2)
@@ -1688,7 +1328,6 @@ void clearfields(object self)
 				temp4=sqrt(temp2*temp3)
 				costheta=temp1/temp4
 				
-				//计算d值
 				number temp=((4/(3*a**2))*(h1**2+(h1*k1)+k1**2)+((1/c**2)*l1**2))
 				d1=sqrt(1/temp)
 				
@@ -1701,7 +1340,7 @@ void clearfields(object self)
 				crystalname="Hexagonal"
 			}
 
-		if(crystalvalue==5) // 菱方
+		if(crystalvalue==5) // Rhombohedral
 			{
 				number costheta, temp, temp1, temp2, temp3, temp4, cellvol, d1, d2
 				temp=(1/a**2)
@@ -1714,7 +1353,6 @@ void clearfields(object self)
 				temp4=(temp*temp2)/temp3
 				d2=sqrt(1/temp4)
 
-				// 单胞体积
 				cellvol=a**3*sqrt((1-(3*cos(alpha)**2)+(2*cos(alpha)**3)))
 
 				temp1=(a**4*d1*d2)/cellvol**2
@@ -1725,7 +1363,6 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				number tem1=((h1**2+k1**2+l1**2)*sin(alpha)**2)+(2*((h1*k1)+(k1*l1)+(h1*l1))*(cos(alpha)**2-cos(alpha)))
 				number tem2=a**2*(1-(3*cos(alpha)**2)+(2*cos(alpha)**3))
 				number tem3=tem1/tem2
@@ -1739,7 +1376,7 @@ void clearfields(object self)
 				crystalname="Rhombohedral"
 			}
 
-		if(crystalvalue==6) // 单斜
+		if(crystalvalue==6) // Monoclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4
 
@@ -1752,7 +1389,6 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				number temp=((1/a**2)*(h1**2/sin(beta)**2))+((1/b**2)*k1**2)+((1/c**2)*(l1**2/sin(beta)**2))-((2*h1*l1*cos(beta))/(a*c*sin(beta)**2))
 				d1=sqrt(1/temp)
 				
@@ -1762,7 +1398,7 @@ void clearfields(object self)
 				crystalname="Monoclinic"
 			}
 
-		if(crystalvalue==7) // 三斜
+		if(crystalvalue==7) // triclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8, temp9, temp10, temp11, temp12
 
@@ -1791,7 +1427,6 @@ void clearfields(object self)
 				angle=acos(costheta)
 				angle=angle*(180/pi())
 				
-				//计算d值
 				number V2=a**2*b**2*c**2*(1-cos(alpha)**2-cos(beta)**2-cos(gamma)**2+(2*cos(alpha)*cos(beta)*cos(gamma)))
 				number s11=b**2*c**2*sin(alpha)**2
 				number s22=a**2*c**2*sin(beta)**2
@@ -1819,8 +1454,8 @@ void clearfields(object self)
 				crystalname="Triclinic"
 			}
 
-//----------------------之后计算带轴-------------------------
-		//不计算000
+//----------------------and then calculate the zone axis direction-------------------------
+		//skip for 000
 		if((h1**2+k1**2+l1**2)==0 || (h2**2+k2**2+l2**2)==0)
 			{
 				beep()
@@ -1831,17 +1466,15 @@ void clearfields(object self)
 		v=(l1*h2)-(l2*h1)
 		w=(h1*k2)-(h2*k1)
 
-		// 归一化
+		// Normalization
 		number divisor=CrystUIFrame.NormaliseIndices(u,v,w)
 		u=round(u*100)/100
 		v=round(v*100)/100
 		w=round(w*100)/100
 	
-		//显示结果	
 		self.lookupElement("angleresultfield").dlgtitle(""+ format(angle, "%6.1f"+" deg." )) 
 		self.lookupElement("angleresultfield1").dlgtitle("["+u+","+v+","+w+"]" )
 
-		//在result window中输出			
 			angle=round(angle*100)/100
 			result("\nd1="+format(d1, "%6.4f")+" A, d2="+format(d2, "%6.4f")+" A\n")
 			result("("+h1+","+k1+","+l1+") <==> ("+h2+","+k2+","+l2+") ==> Angle="+angle+" deg.\n")
@@ -1851,7 +1484,7 @@ void clearfields(object self)
 }
 
 
-//***************************计算晶向夹角***************************************
+//***************************Function: directions pannel***************************************
 	void calculatedirectionangles(object self)
 	{
 		number crystalvalue, alpha, beta, gamma, a, b, c, u1,v1,t1,w1, u2,v2,t2,w2, h,k,l, r_1,r_2,angle, ahex, chex, arhomb, rhombalpha, xu1, xu2, xv1, xv2, xt1, xt2, xw1, xw2
@@ -1874,26 +1507,17 @@ void clearfields(object self)
 		self.dlggetvalue("dirv2field",v2)
 		self.dlggetvalue("dirw2field",w2)
 
-		// 角度换算 
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 
-/*		
-		// 开始计算夹角不计算000
-		if(a<=0 || b<=0 || c<=0 || alpha<=0 || beta<=0 || gamma<=0)
-			{
-				beep()
-				exit(0)
-			}
-*/
-		//开始计算晶向长度
+		//calculate the size of a given lattice direction [uvw]
 		r_1=sqrt(u1**2*a**2+v1**2*b**2+w1**2*c**2+2*v1*w1*b*c*cos(alpha)+2*w1*u1*a*c*cos(beta)+2*u1*v1*a*b*cos(gamma) )
 		r_2=sqrt(u2**2*a**2+v2**2*b**2+w2**2*c**2+2*v2*w2*b*c*cos(alpha)+2*w2*u2*a*c*cos(beta)+2*u2*v2*a*b*cos(gamma) )
 			
 			
-		// 开始计算晶向夹角	
-		if(crystalvalue==1) // 立方
+		// calculate the angle of two vectors	
+		if(crystalvalue==1) // cubic
 			{
 				number costheta, temp1, temp2
 				temp1=(u1*u2)+(v1*v2)+(w1*w2)
@@ -1906,7 +1530,7 @@ void clearfields(object self)
 			}
 
 
-		if(crystalvalue==2) //四方
+		if(crystalvalue==2) //tetragonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 
@@ -1922,7 +1546,7 @@ void clearfields(object self)
 			}
 
 
-		if(crystalvalue==3) // 正交
+		if(crystalvalue==3) // orthorhombic
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=(a**2*u1*u2)+(b**2*v1*v2)+(c**2*w1*w2)
@@ -1933,15 +1557,15 @@ void clearfields(object self)
 
 				angle=acos(costheta)
 				angle=angle*(180/pi())
-				crystalname="Orthorhomibc"
+				crystalname="Orthorhombic"
 			}
 
 
-		if(crystalvalue==4) // 六角
+		if(crystalvalue==4) // hexagonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 
-				// 四指数-三指数			
+				//convert four indices to three indices			
 				t1=-(u1+v1)
 				t2=-(u2+v2)
 
@@ -1963,12 +1587,12 @@ void clearfields(object self)
 				crystalname="Hexagonal"
 			}
 
-		if(crystalvalue==5) // 菱方
+		if(crystalvalue==5) // Rhombohedral
 			{
 
 				number costheta, temp1, temp2, temp3, temp4
 
-				// 菱方指数-六角指数
+				// convertion of indices
 				xu1=((2*u1)-v1-w1)/3
 				xu2=((2*u2)-v2-w2)/3
 
@@ -1977,8 +1601,6 @@ void clearfields(object self)
 
 				xw1=(u1+v1+w1)/3
 				xw2=(u2+v2+w2)/3
-
-		/// 三指数计算四指数
 
 				p1=((2*xu1)-xv1)
 				q1=((2*xv1)-xu1)
@@ -1994,10 +1616,9 @@ void clearfields(object self)
 				normaliseindices(self, p2, q2, s2)
 				r2=-(p2+q2)
 
-				//菱方-六角
+				//convert rhombohedron to hexagonal
 				rhombtohexconversion(self, alpha, a, ahex, chex)
 
-		// 用六角三指数计算角度
 				temp1=(xu1*xu2)+(xv1*xv2)-(0.5*((xu1*xv2)+(xv1*xu2)))+((chex**2/ahex**2)*xw1*xw2)
 				temp2=xu1**2+xv1**2-(xu1*xv1)+((chex**2/ahex**2)*xw1**2)
 				temp3=xu2**2+xv2**2-(xu2*xv2)+((chex**2/ahex**2)*xw2**2)
@@ -2009,14 +1630,13 @@ void clearfields(object self)
 				angle=angle*(180/pi())
 				crystalname="Rhombohedral"
 
-				//指数归一化
 				normaliseindices(self, xu1, xv1, xw1)
 				xt1=-(xu1+xv1)
 				normaliseindices(self, xu2, xv2, xw2)
 				xt2=-(xu2+xv2)
 			}
 
-		if(crystalvalue==6) // 单斜
+		if(crystalvalue==6) // monoclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=(a**2*u1*u2)+(b**2*v1*v2)+(c**2*w1*w2)+(a*c*((w1*u2)+(u1*w2))*cos(beta))
@@ -2032,7 +1652,7 @@ void clearfields(object self)
 
 
 
-		if(crystalvalue==7) //三谢
+		if(crystalvalue==7) //triclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8, temp9, temp10, temp11, temp12
 
@@ -2065,18 +1685,18 @@ void clearfields(object self)
 			
 		angle=round(angle*100)/100
 		
-//----------------------之后计算晶面-------------------------
+//----------------------and then calculate the formed plane-------------------------
 		h=(v1*w2)-(v2*w1)
 		k=(w1*u2)-(w2*u1)
 		l=(u1*v2)-(u2*v1)
 
-		// 归一化
+		// normalization
 		number divisor=CrystUIFrame.NormaliseIndices(h,k,l)
 		h=round(h*100)/100
 		k=round(k*100)/100
 		l=round(l*100)/100
 		
-		//显示结果	
+		//show results	
 		self.lookupElement("dirresultfield").dlgtitle(""+ format(angle, "%6.1f"+" deg." )) 
 		self.lookupElement("dirresultfield1").dlgtitle("("+h+","+k+","+l+")" )
 
@@ -2088,7 +1708,7 @@ void clearfields(object self)
 }
 
 
-//***************************晶面和晶向转换***************************************
+//***************************Function: plane or direction indices convertion***************************************
 void plane2direction(object self)
 {
 number crystalvalue, alpha, beta, gamma, a, b, c
@@ -2100,12 +1720,11 @@ number crystalvalue, alpha, beta, gamma, a, b, c
 		self.dlggetvalue("bfield",b)
 		self.dlggetvalue("cfield",c)
 		
-		// 角度换算 
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())		
 
-number h,k,l,u,v,w		
+        number h,k,l,u,v,w		
 		self.dlggetvalue("zoneh1field",h)
 		self.dlggetvalue("zonek1field",k)
 		self.dlggetvalue("zonel1field",l)
@@ -2114,7 +1733,7 @@ number h,k,l,u,v,w
 		self.dlggetvalue("zonek2field",v)
 		self.dlggetvalue("zonel2field",w)		
 		
-//定义矩阵
+//define G matrix and its inverse
 number a11,a12,a13,a21,a22,a23,a31,a32,a33
 a11=a**2
 a12=Tert(abs(a*b*cos(gamma))<1e-8,0,a*b*cos(gamma) )
@@ -2128,30 +1747,6 @@ a33=c**2
 image G := [3,3] : { {a11,a12,a13},{a21,a22,a23},{a31,a32,a33} }
 
 number b11,b12,b13,b21,b22,b23,b31,b32,b33,t
-
-/*
-t=a**2*b**2*c**2*(1-(cos(alpha) )**2-(cos(beta) )**2-(cos(gamma) )**2+2*cos(alpha)*cos(beta)*cos(gamma) )
-t=Tert(1/t<1e-8,0,1/t)
-b11=b**2*c**2*(sin(alpha) )**2*t
-b11=Tert(abs(b11)<1e-8,0,b11)
-b12=a*b*c**2*(cos(alpha)*cos(beta)-cos(gamma) )*t
-b12=Tert(abs(b12)<1e-8,0,b12)
-b13=a*b**2*c*(cos(gamma)*cos(alpha)-cos(beta) )*t
-b13=Tert(abs(b13)<1e-8,0,b13)
-b21=a*b*c**2*(cos(alpha)*cos(beta)-cos(gamma) )*t
-b21=Tert(abs(b21)<1e-8,0,b21)
-b22=a**2*c**2*(sin(beta) )**2*t
-b22=Tert(abs(b22)<1e-8,0,b22)
-b23=a**2*b*c*(cos(beta)*cos(gamma)-cos(alpha) )*t
-b23=Tert(abs(b23)<1e-8,0,b13)
-b31=a*b**2*c*(cos(gamma)*cos(alpha)-cos(beta) )*t
-b31=Tert(abs(b31)<1e-8,0,b31)
-b32=a**2*b*c*(cos(beta)*cos(gamma)-cos(alpha) )*t
-b32=Tert(abs(b32)<1e-8,0,b32)
-b33=a**2*b**2*(sin(gamma) )**2*t
-b33=Tert(abs(b33)<1e-8,0,b33)
-*/
-
 image G_1 :=MatrixInverse(G)
 b11=G_1.GetPixel(0,0)
 b12=G_1.GetPixel(0,1)
@@ -2179,7 +1774,7 @@ number h1=hkl.GetPixel(0,0)
 number k1=hkl.GetPixel(0,1)
 number l1=hkl.GetPixel(0,2)
 
-image hkl_1=abs(hkl)  //除以最小非零整数
+image hkl_1=abs(hkl) 
 number x,y
 for(number i=1;i<4;i++)
 {
@@ -2209,63 +1804,14 @@ v1=v1/divisor
 w1=w1/divisor
 
 
-if(h**2+l**2+u**2!=0)result("\nPlane to direction:  ("+h+", "+k+", "+l+") <==>  ["+u1+",\t"+v1+",\t"+w1+"]\n")
-if(u**2+v**2+w**2!=0)result("\nDirection to plane:  ["+u+", "+v+", "+w+"] <==> ("+h1+",\t"+k1+",\t"+l1+") \n")	
+if(h**2+l**2+u**2!=0)result("\nPlane to direction:  ("+h+", "+k+", "+l+") <==>  ["+u1+", "+v1+", "+w1+"]\n")
+if(u**2+v**2+w**2!=0)result("\nDirection to plane:  ["+u+", "+v+", "+w+"] <==> ("+h1+", "+k1+", "+l1+") \n")	
 
-dlgtitle(self.lookupelement("zoneresultfield"),""+format(u1,"%6.1f")+","+format(v1,"%6.1f")+","+format(w1,"%6.1f"))
-dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format(k1,"%6.1f")+","+format(l1,"%6.1f"))
+dlgtitle(self.lookupelement("zoneresultfield"),""+format(u1,"%4.2f")+", "+format(v1,"%4.2f")+", "+format(w1,"%4.2f"))
+dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%4.2f")+", "+format(k1,"%4.2f")+", "+format(l1,"%4.2f"))
 }
-
-//---------------------计算带轴-------------------------
-	void calculatezoneaxis(object self)
-	{
-		number h1, k1, l1,i1, i2,h2,k2,l2, u, v, t, w, crystalvalue, a, b, c, alpha, beta, gamma, p, q, r, s
-		string crystalname
-
-		self.dlggetvalue("alphafield",alpha)
-		self.dlggetvalue("betafield",beta)
-		self.dlggetvalue("gammafield",gamma)
-		self.dlggetvalue("afield",a)
-		self.dlggetvalue("bfield",b)
-		self.dlggetvalue("cfield",c)
-
-		self.dlggetvalue("zoneh1field",h1)
-		self.dlggetvalue("zonek1field",k1)
-		self.dlggetvalue("zonel1field",l1)
-
-		self.dlggetvalue("zoneh2field",h2)
-		self.dlggetvalue("zonek2field",k2)
-		self.dlggetvalue("zonel2field",l2)
-		self.dlggetvalue("crystalradios", crystalvalue)
-
-		//不计算000
-		if((h1**2+k1**2+l1**2)==0 || (h2**2+k2**2+l2**2)==0)
-			{
-				beep()
-				exit(0)
-			}
-
-		u=(k1*l2)-(k2*l1)
-		v=(l1*h2)-(l2*h1)
-		w=(h1*k2)-(h2*k1)
-
-		// 归一化
-		number divisor=CrystUIFrame.NormaliseIndices(u,v,w)
-		u=round(u*100)/100
-		v=round(v*100)/100
-		w=round(w*100)/100
-
-		//显示结果
-		self.lookupElement("zoneresultfield").dlgtitle("  " + u+" , "+v+" , "+w)
-
-		result("\n("+h1+","+k1+","+l1+") <==> ("+h2+","+k2+","+l2+") ==> ["+u+","+v+","+w+"]\n")
-
-		self.validateview()
-	}
-
 	
-	//*************************d-hkl的输入更新*******************************************
-	// 根据h和k值自动计算出 i= -(h+k)
+	//*************************Function: to response when d or hkl is changed in d-hkl pannel*******************************************
 	void dhorkchanged(object self, taggroup tg)
 	{
 		number hvalue, kvalue, ivalue, crystalvalue
@@ -2275,7 +1821,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 	}
 	
 	
-	//*********************************Angle (hkl)1的输入更新***********************************
+	//*********************************Function: to response when hkl_1 is changed in Planes pannel***********************************
 	void anghork1changed(object self, taggroup tg)
 	{
 		number hvalue, kvalue, ivalue, crystalvalue
@@ -2285,7 +1831,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 	}	
 	
 	
-	//*********************************Angle (hkl)2的输入更新***********************************
+	//*********************************Function: to response when hkl_2 is changed in Planes pannel***********************************
 	void anghork2changed(object self, taggroup tg)
 	{
 		number hvalue, kvalue, ivalue, crystalvalue
@@ -2295,7 +1841,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 	}	
 	
 	
-		//*********************************Angle [uvw]1的输入更新***********************************
+		//*********************************Function: to response when uvw_1 is changed in Direction sub-pannel***********************************
 	void diru1orv1changed(object self, taggroup tg)
 	{
 		number uvalue, vvalue, tvalue, crystalvalue
@@ -2304,7 +1850,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 		self.validateview()       
 	}	
 	
-		//*********************************Angle [uvw]2的输入更新***********************************
+		//*********************************Function: to response when uvw_2 is changed in Direction sub-pannel***********************************
 	void diru2orv2changed(object self, taggroup tg)
 	{
 		number uvalue, vvalue, tvalue, crystalvalue
@@ -2313,7 +1859,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 		self.validateview()       
 	}	
 	
-	//*********************************zone [hkl]1的输入更新***********************************
+	//*********************************Function: to response when (hkl) is changed in h<->u sub-pannel***********************************
 	void zonehork1changed(object self, taggroup tg)
 	{
 		number hvalue, kvalue, ivalue, crystalvalue
@@ -2321,8 +1867,8 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 		
 		self.validateview()
 	}
-
-	//*********************************zone [hkl]2的输入更新***********************************
+	
+	//*********************************Function: to response when [uvw] is changed in h<->u sub-pannel***********************************
 	void zonehork2changed(object self, taggroup tg)
 	{
 		number hvalue, kvalue, ivalue, crystalvalue
@@ -2332,7 +1878,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 	}	
 	
 	
-	//*********************************晶体选择框发生改变***********************************
+	//*********************************Function: to response when Crystal list is changed***********************************
 	void elementchanged(object self, taggroup tg)
 	{
 		number flag, a, b, c, alpha, beta, gamma, pulldownmenuval, i, lattice
@@ -2343,7 +1889,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 		string pdname
 		dlggetnthlabel(tg, pulldownmenuval-1, pdname)
 
-		if(pdname!="") // 已选择晶体，可以输入值
+		if(pdname!="") // select a crystal
 			{
 				self.setelementisenabled("crystalradios",1)
 				self.setelementisenabled("alphafield",1)
@@ -2354,7 +1900,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 				self.setelementisenabled("cfield",1)
 				self.setelementisenabled("addcrystalbutton",1)
 			}
-		else  // 没选中，可以输入值
+		else  
 			{
 				self.setelementisenabled("crystalradios",1)
 				self.setelementisenabled("alphafield",1)
@@ -2365,27 +1911,24 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 				self.setelementisenabled("cfield",1)
 				self.setelementisenabled("addcrystalbutton",1)
 
-				//清除已有数据			
 				crystUIFrame.crystclearbutton()
 			}
 
-		// ----------------------------选择晶体名字后，设置相应的参数---------------------------
-		flag=0 //如果名字匹配，则为0
+		// ----------------------------read and set lattice parameters of the selected crystal---------------------------
+		flag=0
 
 		string crystalname
 
-		//读取缓存
 		taggroup ptg=getpersistenttaggroup()
 		taggroup crystaltags
 		ptg.TaggroupGetTagAsTagGroup("ElectronDiffraction Tools:Crystal Tools:Crystals", crystaltags)
 
 		number count=crystaltags.taggroupcounttags()
 
-		// 按标签读取数据
 		for(i=0; i<count; i++)
 		{
 			String label = crystaltags.TagGroupGetTagLabel( i ) 
-			if(pdname==label) //如果晶体名能匹配上，读取晶体数据
+			if(pdname==label) //find a crystal
 			{
 				flag=1
 
@@ -2403,7 +1946,7 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 			if(flag==1) break
 		}
 
-		//把这些数据显示到输入框中
+		//update the paramters
 		if(flag==1) 
 			{
 				self.dlgvalue("crystalradios",lattice)
@@ -2428,32 +1971,29 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 	}
 
 
-
-
-	
-	// -----------------各子界面切换、功能切换------------------
+	// -----------------Function: to response when sub-pannels are switched------------------
 	void maincalcroutine(object self)
 	{
 		number tabvalue
 		self.dlggetvalue("crysttabs", tabvalue) // 0=d-spacings, 1=planes
 
-		if(tabvalue==0) // d-spacing
+		if(tabvalue==0) // d-hkl sub-pannel
 			{
 				self.calculatedspacing()
 				exit(0)
 			}
 
-		if(tabvalue==1) // Planes
+		if(tabvalue==1) // Planes sub-pannel
 			{
 				self.calculateplaneangles()
 				exit(0)
 			}
-		if(tabvalue==2) // Directions
+		if(tabvalue==2) // Directions sub-pannel
 			{
 				self.calculatedirectionangles()
 				exit(0)
 			}
-		if(tabvalue==3) // Zones
+		if(tabvalue==4) // h<->u sub-pannel
 			{
 				self.plane2direction()
 				exit(0)
@@ -2461,32 +2001,14 @@ dlgtitle(self.lookupelement("zoneresultfield1"),""+format(h1,"%6.1f")+","+format
 }
 
 
-
-//***********************关闭窗口、保存窗口位置************************// 
-void AboutToCloseDocument( object self, number test)
-{
-	number xpos, ypos
-	documentwindow dialogwindow=getframewindow(self)
-	windowgetframeposition(dialogwindow, xpos, ypos)
-
-	//软件窗口在可视范围内
-	if(xpos<0||xpos>600)
-	{
-		setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position X",xpos)
-		setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position Y",ypos)
-	}
-}
-
-//---------------------------------class结束-----------------------------
+//---------------------------------Function: + button, to add or delete crystals-----------------------------
 void AddCrystal(object self)
 {
-If(OptionDown())  //删除选中的crystal
+If(OptionDown())  //ALT+: to delete the selected crystal
 {
-//选中了谁
 TagGroup Tgcrystals= self.LookUpElement("elementpulldown")
-number CrystalName=Tgcrystals.dlggetvalue()  //注意下拉框从1开始，而非0
+number CrystalName=Tgcrystals.dlggetvalue()  //note: it begins from 1 instead 0
 
-//删除缓存中的对应crystal
 taggroup ptg=getpersistenttaggroup()
 taggroup crystaltags
 ptg.TaggroupGetTagAsTagGroup("ElectronDiffraction Tools:Crystal Tools:Crystals", crystaltags)
@@ -2494,17 +2016,16 @@ String label = crystaltags.TagGroupGetTagLabel( CrystalName-1)
 
 if(!twobuttondialog("The crystal :    "+label+"    ,  will be removed!","Yes","No")) exit(0)
 
-crystaltags.TagGroupDeleteTagWithIndex(CrystalName-1) //从缓存中删除
+crystaltags.TagGroupDeleteTagWithIndex(CrystalName-1) 
 Result("\nCrystal: "+label+" is removed from the database.\n")
 
-//删除列表，更新下拉框
+//delete all pull-down list
 for(number i=0;i<200;i++)
 {
-//删除list2列表
 Tgcrystals.DLGRemoveElement(0)
 }
 	
-//从缓存中读取数据，更新列表
+//update the tags
 ptg.TaggroupGetTagAsTagGroup("ElectronDiffraction Tools:Crystal Tools:Crystals", crystaltags)
 
 number count=crystaltags.taggroupcounttags()
@@ -2516,7 +2037,7 @@ Tgcrystals.DLGAddPopupItemEntry(label)
 
 }
 
-//添加选中的crystal
+//Add a crystal
 else
 {
 number lattice, a, b, c, alpha, beta, gamma
@@ -2579,7 +2100,7 @@ setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Crystals:"+crys
 
 Result("\nThe added crystal is: "+CrystalName+" ("+latticename+", "+a+","+b+", "+c+", "+alpha+", "+beta+", "+gamma+")\n")
 
-//匹配缓存中的位置，以便更新
+//update tags
 	count=crystaltags.taggroupcounttags()
 	number selectedno
 	for(i=0; i<count; i++)
@@ -2594,16 +2115,12 @@ Result("\nThe added crystal is: "+CrystalName+" ("+latticename+", "+a+","+b+", "
 			}
 	}
 	
-	
-//删除原有crystal列表
 TagGroup Tgcrystals= self.LookUpElement("elementpulldown")
 for(i=0;i<200;i++)
 {
-//删除list2列表
 Tgcrystals.DLGRemoveElement(0)
 }
 	
-//从缓存中读取数据，更新列表
 ptg.TaggroupGetTagAsTagGroup("ElectronDiffraction Tools:Crystal Tools:Crystals", crystaltags)
 count=crystaltags.taggroupcounttags()
 for(i=0; i<count; i++)
@@ -2616,13 +2133,12 @@ else
 {
 Tgcrystals.DLGAddPopupItemEntry(label)
 }
-
 }	
-
 }
 }
 
-//------------以下用于定义各种按钮的功能----------------
+
+//------------SAED buttion: to calculate FT diffractogram from HRTEM image----------------
 void SAEDButton(object self)
 {
 Result("-----------------------------------------------------------------------------------------\nSAED button: \n1) Get the diffractogram of a HRTEM pattern;\n2) ALT key: Get the filtered diffractogram of a HRTEM pattern;\n3) CTRL key: Get an Autocorrelation SAED pattern\.n-----------------------------------------------------------------------------------------\n")
@@ -2634,7 +2150,7 @@ image img:=getfrontimage()
 number xsize,ysize,size,n,x,y,t,l,b,r
 img.getsize(xsize,ysize)
 
-//得到2n图
+//Keep the image size 2^n
 size=max(xsize,ysize)
 n=ceil(log2(size))
 size=2**n
@@ -2694,12 +2210,11 @@ temp1=warp(temp,icol/factor,irow/factor)
 
 xscale=xscale/factor
 
-// 平滑值
+// Create the damped edges filter
 number edgesize=100 // the width in pixels over which the edge is smoothed
 if(edgesize>(xsize)/2) edgesize=xsize/3
 if(edgesize>(ysize)/2) edgesize=ysize/3
 
-// Create the damped edges filter
 image filter=createdampededge(edgesize, xsize, ysize)
 image HanImg=temp1*filter
 
@@ -2708,7 +2223,7 @@ image magimg=sqrt(real(FFTimg)**2+imaginary(FFTimg)**2)
 
 xscale=1/(xsize*xscale)
 
-//图像过小，放大
+//interpolation of the image if the size is so small
 if(xsize<1024)
 {
 number factor=xsize/1024
@@ -2789,7 +2304,7 @@ xscale=1/(xsize*xscale)
 compleximage FFTimg=realFFT(temp1)
 image magimg=sqrt(real(FFTimg)**2+imaginary(FFTimg)**2)
 
-//图像过小，放大
+//interpolation of the image if the size is so small
 if(xsize<1024)
 {
 number factor=xsize/1024
@@ -2836,7 +2351,7 @@ magimg.setstringnote("ElectronDiffraction Tools:File type","SAED")
 
 
 /*************************************************************************
-Center Button
+Center Button: to find the center of a SAED pattern
 *************************************************************************/
 void CenterButton(object self)
 {
@@ -2850,7 +2365,7 @@ setstringnote(img, "ElectronDiffraction Tools:File type","SAED")
 
 number t,l,b,r,x0,y0,Radius
 number annots=imgdisp.componentcountchildrenoftype(6)  
-if(annots!=0)  //如果是圆,圆心为中心
+if(annots!=0)  //Oval component
 {
 component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.ComponentGetBoundingRect(t,l,b,r)
@@ -2858,7 +2373,6 @@ annotid.ComponentGetBoundingRect(t,l,b,r)
 x0=l+(r-l)/2
 y0=t+(b-t)/2
 
-//设置中心
 if (!GetNumber( "Set New Center X (pix)\nX0= "+x0, x0, x0 ))exit(0)
 if (!GetNumber( "Set New Center Y (pix)\nY0= "+y0, y0, y0 ))exit(0)
 
@@ -2877,11 +2391,10 @@ imgdisp.ImageDisplayAddROI(roi_1)
 setstringnote(img, "ElectronDiffraction Tools:File type","SAED")
 }
 
-else if(annots==0)  //如果没有圆
+else if(annots==0)  //input the given values
 {
 number sizex, sizey, centery, centerx, scalex, scaley,x,y,centerx0,centery0
 
-//读取已有中心
 img.getorigin(centerx0,centery0)
 
 if (!GetNumber( "Set New Center X (pix)\nX0= "+centerx0, centerx0, centerx0 ))exit(0)
@@ -2903,7 +2416,7 @@ setstringnote(img, "ElectronDiffraction Tools:File type","SAED")
 }
 }
 	
-else
+else  //Find it using Gaussian fitting
 {	
 image  img:=getfrontimage()
 ImageDisplay imgdisp = img.ImageGetImageDisplay(0)
@@ -2914,7 +2427,7 @@ string imgname=img.getname()
 number centrex, centrey, x0,y0,x1,y1,x2,y2,x3,y3,x,y,xsize,ysize,xscale,yscale, top,left,bottom,right,width,times
 img.GetSize(xsize,ysize)
 
-//清除所有的roi、线、文字标记、圆环
+//clear all marks
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -2938,7 +2451,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -2946,7 +2458,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -2954,7 +2465,6 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//操作提示
 number radius=xsize/150,smooth
 
 if(radius<1)radius=2
@@ -2964,9 +2474,8 @@ textannot.componentsetfillmode(1)
 textannot.componentsetdrawingmode(2) 
 textannot.componentsetforegroundcolor(1,1,0)
 textannot.componentsetfontfacename("Microsoft Sans Serif")
-//imgdisp.componentaddchildatend(textannot)
 	
-number k=1,m=1,noclick=1,twoclicks=1,n //noclick:衍射点数，twoclick：first click defines the center, second click defines the width
+number k=1,m=1,noclick=1,twoclicks=1,n //noclick: number of clicks，twoclick：first click defines the center, second click defines the width
 while(2>m)
 {
 number keypress=getkey()
@@ -3004,7 +2513,7 @@ y1=mouse_img_y
 img.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 
 		
-if(keypress==32) //鼠标取点
+if(keypress==32) //Space bar to define it
 {
 number t,l,b,r,leftpart,rightpart
 img.GetSize(xsize,ysize)
@@ -3066,7 +2575,6 @@ m=2
 }
 
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -3074,7 +2582,7 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-for(number z=1;z<2;z++)  //分别精修各点
+for(number z=1;z<2;z++)  //refine the center
 {
 number centrex,centrey
 GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":X", centrex )
@@ -3083,18 +2591,15 @@ GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":Width", widt
 radius=1*width
 width=2*width
 
- //-------------开始用高斯拟合确定该点中心------------
 img := GetFrontImage()
 img.GetSize(xsize,ysize)
 
-//获取选区图
 image temp=img[centrey-width,centrex-width,centrey+width,centrex+width]
 top=centrey-width
 left=centrex-width
 temp.getsize(xsize,ysize)
 temp=( ( icol -(xsize+1)/2 )**2 + ( irow - (ysize+1)/2 )**2 < radius**2 ) ? temp : 0 
 
-// 放大times倍、cross corelation
 number x_0,y_0
 times=1
 times=1/times
@@ -3131,7 +2636,7 @@ image xpro=realimage("",4,19,1)
 image ypro=realimage("",4,19,1)
 
 xproj.SetSelection(0,0.05*xsize,1,0.95*xsize)
-for(number j=1;j<20;j++)//再设置weighting
+for(number j=1;j<20;j++)
 {
 weighting=j*0.5
 image peakfitx=FitGaussian(xproj, weighting, peakintensity, xpeakchannel,sigma, fwhm,ThisRpX)
@@ -3167,7 +2672,7 @@ setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot"+z+":Y",y1)
 deletepersistentnote("ElectronDiffraction Tools:temp")
 }
 
-//删除已有的矩形框
+//clear components
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -3193,6 +2698,9 @@ setstringnote(img, "ElectronDiffraction Tools:File type","SAED")
 }
 }
 
+/*************************************************************************
+Profile Button: to get an intensity profile from a SAED pattern
+*************************************************************************/
 void ProfileButton(object self)
 {
 number xsize, ysize, centrex, centrey, minivalue,xscale,yscale,xwin,ywin
@@ -3205,13 +2713,11 @@ string imgname=frontimage.getname()
 
 Result("-----------------------------------------------------------------------------------------\nProfile button: \n1) to get an intensity profile and its linear image of the SAED pattern;\n2) ALT key: to get a stacked XRD profile;\n3) Ctrl key: to get a surface plot of a linear image.\n4) Spacebar:  to align the stacked profiles or the linear image.\n -----------------------------------------------------------------------------------------\n")
 
-//得到linear image
 string unit
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Center:X", centrex )
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Center:Y", centrey )
-//getpersistentStringnote("ElectronDiffraction Tools:Crystal Tools:Default:Unit",unit)
 
-if(OptionDown())  //ALT+得到stacked profiles
+if(OptionDown())  //ALT+: to get some stacked profiles
 {
 image img:=getfrontimage()
 imagedisplay imgdisp=img.ImageGetImageDisplay(0)
@@ -3225,7 +2731,6 @@ GetNumberNote(img,"ElectronDiffraction Tools:Center:Y", y0 )
 SetNumberNote(img,"ElectronDiffraction Tools:Temp:Center:X", x0 )
 SetNumberNote(img,"ElectronDiffraction Tools:Temp:Center:Y", y0 )
 
-//获取中心半图的linearimage
 number width=Minimum(x0,xsize-x0,y0,ysize-y0)
 
 image new=img[y0-width,x0-width,y0+width,x0+width]
@@ -3248,7 +2753,7 @@ linearimg.imagesetdimensioncalibration(0,0,xscale,"s (1/nm)",0)
 unitstring="deg."
 imagesetdimensioncalibration( linearimg, 1, 0, 360/ysize, unitstring, 0)
 
-//弹出对话框，输入profile的数目
+//Number of profiles (note: It should be less than 100 if you wan to import in Mdi Jade.)
 number y,profileno,spaceno=1,no=30
 GetNumber("The number of profiles (<100)",no,no)
 number integralwidth=floor(ysize/no)
@@ -3256,7 +2761,7 @@ number integralwidth=floor(ysize/no)
 SetPersistentNumberNote("ElectronDiffraction Tools:Temp:Slice no",no)
 SetPersistentNumberNote("ElectronDiffraction Tools:Temp:Width",width)
 
-//先保存total profile
+//Save a total profile
 image profileimage=RealImage("",4,xsize,1) 
 profileimage.ShowImage()
 
@@ -3266,11 +2771,10 @@ profileimage.setstringnote("ElectronDiffraction Tools:File type","Intensity Prof
 profileimage.SetWindowPosition(xwin,ywin)
 
 imagedisplay Profiledisp=profileimage.ImageGetImageDisplay(0)
-//Profiledisp.LinePlotImageDisplaySetLegendShown(1)
 Profiledisp.lineplotimagedisplaysetgridon(0)  //gridon=0
 Profiledisp.lineplotimagedisplaysetbackgroundon(0)  //bgon=0
 
-//而后保存subprofile
+//and then subprofile
 for(number i=0;i<no;i++)
 {
 y=(i+0.5)*integralwidth
@@ -3343,7 +2847,7 @@ for ( number i = 1; i < nSlices; i++ )
 }
 }
 
-else if(ControlDown())  //CTRL+ surface plot
+else if(ControlDown())  //CTRL+ : to get a surface plot
 {
 number xsize, ysize, centrex, centrey, minivalue,xscale,yscale
 
@@ -3527,7 +3031,7 @@ setstringnote(profile, "ElectronDiffraction Tools:File type","Intensity Profile"
 
 }
 
-else  //默认直接得到intensity profile
+else  //Get an intensity profile
 {
 number xwidth,ywidth,minwidth
 xwidth=tert(centrex-0.5*xsize>0,xsize-centrex,centrex) 
@@ -3554,8 +3058,6 @@ imagedisplay lineardisp=linearimg.ImageGetImageDisplay(0)
 lineardisp.ImageDisplaySetCaptionOn(1)
 setwindowposition(linearimg,xwin,ywin)
 
-
-//投影到1D
 image profile:= RealImage("Intensity profile of "+imgname,4,xsize,1) 
 profile[icol,0] += linearimg
 profile/=samples
@@ -3565,7 +3067,7 @@ imagecopycalibrationfrom(profile, linearimg)
 
 xscale=linearimg.ImageGetDimensionScale(0)
 profile.imagesetdimensionscale(0,xscale)
-profile.imagesetdimensionunitstring(0,"s (1/nm)") //标定为s
+profile.imagesetdimensionunitstring(0,"s (1/nm)") 
 
 profile.imagesetdimensionorigin(0,0)
 profile.ImagesetDimensionCalibration(1,0,1,"Counts",0)
@@ -3587,11 +3089,14 @@ setstringnote(profile, "ElectronDiffraction Tools:File type","Intensity Profile"
 }
 }
 
+/*************************************************************************
+Peak Button: to find peaks or get a d-spacing table
+*************************************************************************/
 void PeaksButton(object self)
 {
 Result("-----------------------------------------------------------------------------------------\n1) To mark the peak defined by an ROI.\n2) Ctrl key: to locate peaks automatically;\n3) ALT key: to output the d-spacing table.\n-----------------------------------------------------------------------------------------\n")
 
-//ALT 获取d-值表
+//ALT+:  to get a d-spacing table
 if(OptionDown())
 {
 image img:=GetFrontImage()
@@ -3604,7 +3109,7 @@ number  filetype=1
 GetNumber("Choose the file type:\n1=*.dsp, d-spacing table for Mdi Jade\n2=*.pks, peak profile for Search Match.",filetype,filetype)
 
 number maxval=img[0,0.1*xsize,1,xsize].max()
-if(img.max()<100)img=10000*img/maxval    //防止值过小
+if(img.max()<100)img=10000*img/maxval   
 
 string unit,imgname
 number l,r,xscale,d,wavelength
@@ -3642,7 +3147,7 @@ d=2*Pi()/(0.5*(l+r)*xscale )
 
 if(unit=="Two theta (deg.)")
 {
-d=wavelength/(2*sin(0.5*(l+r)*xscale*0.5*Pi()/180))   //注意转换
+d=wavelength/(2*sin(0.5*(l+r)*xscale*0.5*Pi()/180)) 
 }
 
 number x=d/100
@@ -3718,7 +3223,7 @@ CloseFile(fileID)
 }
 }
 
-//自动寻峰
+//Find peaks by using top-hat filter
 else if(ControlDown())
 {
 image  img:=getfrontimage()
@@ -3737,7 +3242,7 @@ number hatwidth=width/2, brimwidth=width/4, hatthreshold=0.0005,PeakorTrough=0  
 tophatfilter(img, brimwidth, hatwidth, hatthreshold, PeakorTrough)
 }
 
-//添加一个峰
+//Add a peak from a ROI
 else
 {
 image  img:=getfrontimage()
@@ -3755,11 +3260,14 @@ img.clearselection()
 }
 }
 
+/*************************************************************************
+Calibration Button: to calibrate patterns
+*************************************************************************/
 void CalibButton(object self)
 {
 Result("-----------------------------------------------------------------------------------------\n1) Calibrate the profile by a known peak: Drag a ROI at the desired peak; and then set the known d-spacing (A), the middle location of the ROI will be used to calibrate.\n2) Ctrl key: to calibrate SAED pattern by a known spacing between two spot or a scale bar;\n3)ALT key: to output scale parameters.\n-----------------------------------------------------------------------------------------\n")
 
-if(OptionDown())
+if(OptionDown())  //Output the scale information of the selected pattern
 {
 image img:=GetFrontImage()
 number xorigin,xscale,yorigin,yscale,xsize,ysize
@@ -3771,7 +3279,7 @@ If(ysize<=1)
 img.ImageGetDimensionCalibration(0,xorigin,xscale,xunitstring,1)
 Result("\nOrigin: "+xorigin+";    Scale: "+xscale+";    Units: "+xunitstring+"\n")
 
-Result("colint x0:=-"+xorigin*xscale+" inc:="+xscale+"\n")   //输出origin中的interval数据
+Result("colint x0:=-"+xorigin*xscale+" inc:="+xscale+"\n") 
 }
 
 If(ysize>1)
@@ -3782,13 +3290,12 @@ Result("\nOrigin: ("+xorigin+", "+yorigin+");    Scale: ("+xscale+", "+yscale+")
 }
 }
 
-//CTRL+ to calibrate SAED pattern
+//CTRL+:  to calibrate SAED pattern
 if(ControlDown())
 {
-//两点还是scale bar
+
 Number flag=1
 GetNumber("Choose calibration method? (1=spots,  2=Scale bar)",flag,flag)
-
 
 // calibrate SAED using two diffraction spots
 if(flag==1)
@@ -3802,7 +3309,7 @@ string imgname=img.getname()
 number centrex, centrey, x0,y0,x1,y1,x2,y2,x3,y3,x,y,xsize,ysize,xscale,yscale, top,left,bottom,right,width,times
 img.GetSize(xsize,ysize)
 
-//清除所有的roi、线、文字标记、圆环
+//clear all marks
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -3826,7 +3333,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -3834,7 +3340,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -3842,16 +3347,14 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//操作提示
 number radius=xsize/80,smooth
 component textannot=newtextannotation(imgdisp,xsize/15, ysize/15,"SPACE to mark the desired center!", 12)
 textannot.componentsetfillmode(1)
 textannot.componentsetdrawingmode(2) 
 textannot.componentsetforegroundcolor(1,1,0)
 textannot.componentsetfontfacename("Microsoft Sans Serif")
-//imgdisp.componentaddchildatend(textannot)
 	
-number k=1,m=1,noclick=1,twoclicks=1,n //noclick:衍射点数，twoclick：first click defines the center, second click defines the width
+number k=1,m=1,noclick=1,twoclicks=1,n
 while(2>m)
 {
 number keypress=getkey()
@@ -3889,12 +3392,11 @@ y1=mouse_img_y
 img.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 
 		
-if(keypress==32) //鼠标取点
+if(keypress==32) //Space bar to mark it
 {
 number t,l,b,r
 img.GetSelection(t,l,b,r)
 
-//x投影，高斯拟合
 number smooth=10
 image new=img[].Gaussfilter(smooth)
 
@@ -3955,8 +3457,6 @@ m=2
 
 }
 
-
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -3964,7 +3464,7 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-for(number z=1;z<3;z++)  //分别精修各点
+for(number z=1;z<3;z++)  //and then refine them by Gaussian fitting
 {
 number centrex,centrey
 GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":X", centrex )
@@ -3972,17 +3472,14 @@ GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":Y", centrey 
 GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":Width", width )
 width=2*width
 
- //-------------开始用高斯拟合确定该点中心------------
 img := GetFrontImage()
 img.GetSize(xsize,ysize)
 
-//获取选区图
 image temp=img[centrey-width,centrex-width,centrey+width,centrex+width]
 top=centrey-width
 left=centrex-width
 temp.getsize(xsize,ysize)
 
-// 放大times倍、cross corelation
 number x_0,y_0
 times=1
 times=1/times
@@ -4005,9 +3502,6 @@ xproj=xproj-xproj.min()+1
 number xfwhm=fwhm(xproj,  xsize/2, leftpart,rightpart)
 number xpeak=(leftpart+rightpart)/2
 
-//xproj.ShowImage()
-//yproj.ShowImage()
-
 yproj[irow,0]+=new
 yproj=yproj-yproj.min()+1
 number yfwhm=fwhm(yproj,  ysize/2, leftpart,rightpart)
@@ -4015,7 +3509,7 @@ number ypeak=(leftpart+rightpart)/2
 
 number peakintensity, xpeakchannel, ypeakchannel,sigma, ThisRpX,ThisRpY,lastRpX=1,lastRpY=1,weighting=1,loops=20,factor=1
 
-for(number i=18;i>0;i--) //先设置roi的大小
+for(number i=18;i>0;i--)
 {
 number t,l,b,r
 t=0
@@ -4032,19 +3526,16 @@ else
 {
 l=xpeakchannel-factor*xsize/2
 r=xpeakchannel+factor*xsize/2
-//result(xpeakchannel+", ")
 }
 
 if(abs(r-l)>0.9*xfwhm&&abs(r-l)<xsize)
 {
 xproj.SetSelection(t,l,b,r)
-for(number j=1;j<20;j++)//再设置weighting
+for(number j=1;j<20;j++)
 {
 weighting=j*0.5
 image peakfitx=FitGaussian(xproj, weighting, peakintensity, xpeakchannel,sigma, fwhm,ThisRpX)
 setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaX:"+abs(ThisRpX)+":Peak",xPeakchannel)
-//setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaX:"+abs(ThisRpX)+":Factor",factor)
-//setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaX:"+abs(ThisRpX)+":Weight",weighting)
 }
 }
 
@@ -4058,7 +3549,6 @@ else
 {
 l=ypeakchannel-factor*ysize/2
 r=ypeakchannel+factor*ysize/2
-//result(ypeakchannel+"\n")
 }
 
 if(abs(r-l)>0.9*yfwhm&&abs(r-l)<ysize)
@@ -4069,8 +3559,6 @@ for(number j=1;j<20;j++)
 weighting=j*0.5
 image peakfity=FitGaussian(yproj, weighting, peakintensity, ypeakchannel,sigma, fwhm,ThisRpY)
 setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaY:"+abs(ThisRpY)+":Peak",yPeakchannel)
-//setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaY:"+abs(ThisRpY)+":Factor",factor)
-//setpersistentnumbernote("ElectronDiffraction Tools:temp:deltaY:"+abs(ThisRpY)+":Weight",weighting)
 }
 }
 
@@ -4113,29 +3601,25 @@ lineannotation.componentsetdrawingmode(2)
 lineannotation.componentsetforegroundcolor(1,0,1)
 imgdisp.componentaddchildatend(lineannotation) 
 
-//输入衍射的级数
 number order=1
-getnumber("Divided by?",order,order)
+getnumber("Divided by?",order,order)  //order of spots
 
 img.GetScale(xscale,yscale)
 result("Befor calibration: "+xscale+" (1/nm)\n")
 
-// 计算间距
 number unitflag=1,dspacing=1
 GetNumber("Spacing of the drawn line (A or 1/A)",dspacing,dspacing)
 Getnumber("Choose the unit (1=A, 2=1/A)", unitflag,unitflag)
 number r=sqrt((x2-x1)**2+(y2-y1)**2)/order
 
+//calibrate it
 if(unitflag==1)xscale=10/(r*dspacing)
-
 if(unitflag==2)xscale=10*dspacing/r
 
-// Data is output to the results window and onto the image
 img.setScale(xscale,xscale)
 img.SetUnitString("1/nm")
 result("After calibration: "+xscale+" (1/nm)\n")
 
-//deletenote(img,"ElectronDiffraction Tools:Spot coordinates") 
 deletenote(img,"ElectronDiffraction Tools:Live profile") 
 }
 
@@ -4151,7 +3635,7 @@ string imgname=img.getname()
 number centrex, centrey, x0,y0,x1,y1,x2,y2,x3,y3,x,y,xsize,ysize,xscale,yscale, top,left,bottom,right,width,times
 img.GetSize(xsize,ysize)
 
-//清除所有的roi、线、文字标记、圆环
+//clear all marks, and measure two end points of the scale bars
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -4175,7 +3659,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -4183,7 +3666,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -4191,16 +3673,14 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//操作提示
 number radius=2,smooth
 component textannot=newtextannotation(imgdisp,xsize/15, ysize/15,"SPACE to mark the desired center!", 12)
 textannot.componentsetfillmode(1)
 textannot.componentsetdrawingmode(2) 
 textannot.componentsetforegroundcolor(1,1,0)
 textannot.componentsetfontfacename("Microsoft Sans Serif")
-//imgdisp.componentaddchildatend(textannot)
 
-number k=1,m=1,noclick=1,twoclicks=1,n //noclick:衍射点数，twoclick：first click defines the center, second click defines the width
+number k=1,m=1,noclick=1,twoclicks=1,n
 while(2>m)
 {
 number keypress=getkey()
@@ -4238,7 +3718,7 @@ y1=mouse_img_y
 img.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 
 		
-if(keypress==32) //鼠标取点
+if(keypress==32) //Space bar to mark it
 {
 Component box=NewBoxAnnotation(y1-radius,x1-radius,y1+radius,x1+radius)
 box.componentsetfillmode(2)
@@ -4274,7 +3754,7 @@ m=2
 }
 }
 
-//开始标定
+//begin to calibrate it
 Getnumbernote(img,"ElectronDiffraction Tools:Live profile:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Live profile:Spot1:Y",y1)
 Getnumbernote(img,"ElectronDiffraction Tools:Live profile:Spot2:X",x2)
@@ -4290,20 +3770,16 @@ imgdisp.componentaddchildatend(lineannotation)
 img.GetScale(xscale,yscale)
 result("Befor calibration: "+xscale+" (1/nm)\n")
 
-// 计算间距
 number unitflag=1,dspacing=5
 GetNumber("Spacing of the drawn line (1/nm)",dspacing,dspacing)
 
 number r=sqrt((x2-x1)**2+(y2-y1)**2)
-
 xscale=dspacing/r
 
-// Data is output to the results window and onto the image
 img.setScale(xscale,xscale)
 img.SetUnitString("1/nm")
 result("After calibration: "+xscale+" (1/nm)\n")
 
-//deletenote(img,"ElectronDiffraction Tools:Spot coordinates") 
 deletenote(img,"ElectronDiffraction Tools:Live profile") 
 }
 
@@ -4349,7 +3825,6 @@ img.SetSelection(0,0.5*(l+r),1,0.5*(l+r))
 result("xscale (after) is: "+xscale+" 1/A"+"\n")
 }
 }
-
 }
 
 /*************************************************************************
@@ -4359,7 +3834,7 @@ void SaveButton(object self)
 {
 Result("-----------------------------------------------------------------------------------------\n1) Save profiles as a text file;\n2) CTRL key: Save Linear image or Surface plot as *.dif or *.txt;\n3) Alt key: Save SAED pattern as *.dif or *.txt\n-----------------------------------------------------------------------------------------\n")
 
-//保存linear image
+//Save a linear image
 if(ControlDown())
 {
 number xsize, ysize, centrex, centrey, minivalue,xscale,yscale
@@ -4398,7 +3873,7 @@ number theta1, theta2
 theta1=0*xscale
 theta2=xsize*xscale
 
-//先保存total profile
+//save a total profile
 image profile=RealImage("",4,xsize,1) 
 profile[icol,0] += temp
 profile/=ysize
@@ -4416,7 +3891,7 @@ for(number i=0; i<xsize; i++)
 		}		
 	}
 
-//而后保存subprofile
+//and then save subprofiles
 for(number i=0;i<no;i++)
 {
 y=(i+0.5)*width
@@ -4434,7 +3909,6 @@ else
 profile := LiveProfile_ExtractLineProfile(temp,0,y,xsize,y,width)
 }
 
-//保存数据
 profileno=i+1
 WriteFile(fileID, ""+theta1+"    "+xscale+"    1    US    "+wavelength+"    "+theta2+"    "+xsize+" <Profile "+profileno+">\n")
 for(number i=0; i<xsize; i++)
@@ -4465,14 +3939,12 @@ xscale=2*180/Pi()*asin(wavelength/2*0.1*xscale)
 
 image temp=frontimage-frontimage.min()
 
-//提取profile，保存数据
 number theta,m
 for(number i=0;i<xsize;i++)
 {
 theta=i*xscale		
 WriteFile(fileID, theta+"    ")
 
-	//写入多列y
 	for(number j=0;j<no;j++)
 	{
 	m=j+1
@@ -4488,11 +3960,10 @@ WriteFile(fileID, theta+"    ")
 }
 CloseFile(fileID)	
 }
-
 }
 }
 
-//保存SAED数据
+//Save SAED to stacked profiles
 else if(OptionDown())
 {
 number xsize, ysize, centrex, centrey, minivalue,xscale,yscale
@@ -4515,7 +3986,6 @@ GetNumber("The number of profiles (<500)",no,no)
 number width=floor(ysize/no)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Wavelength",wavelength)
 
-//先得到linear image
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Center:X", centrex )
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Center:Y", centrey )
 
@@ -4532,7 +4002,7 @@ linearimg = warp( frontimage[centrey-minwidth,centrex-minwidth,centrey+minwidth,
 linearimg=linearimg-linearimg.min()
 
 getsize(linearimg,xsize,ysize)
-xscale=frontimage.ImageGetDimensionScale(0)/2    //单位为1/nm
+xscale=frontimage.ImageGetDimensionScale(0)/2
 
 if(savetype==1)   //dif file
 {
@@ -4550,7 +4020,6 @@ number theta1, theta2
 theta1=0*xscale
 theta2=xsize*xscale
 
-//先保存total profile
 image profile=RealImage("",4,xsize,1) 
 profile[icol,0] += temp
 profile/=ysize
@@ -4568,7 +4037,6 @@ for(number i=0; i<xsize; i++)
 		}		
 	}
 
-//而后保存subprofile
 for(number i=0;i<no;i++)
 {
 y=(i+0.5)*width
@@ -4586,7 +4054,6 @@ else
 profile := LiveProfile_ExtractLineProfile(temp,0,y,xsize,y,width)
 }
 
-//保存数据
 profileno=i+1
 WriteFile(fileID, ""+theta1+"    "+xscale+"    1    US    "+wavelength+"    "+theta2+"    "+xsize+" <Profile "+profileno+">\n")
 for(number i=0; i<xsize; i++)
@@ -4617,14 +4084,12 @@ xscale=2*180/Pi()*asin(wavelength/2*0.1*xscale)
 
 image temp=linearimg-linearimg.min()
 
-//提取profile，保存数据
 number theta,m
 for(number i=0;i<xsize;i++)
 {
 theta=i*xscale		
 WriteFile(fileID, theta+"    ")
 
-	//写入多列y
 	for(number j=0;j<no;j++)
 	{
 	m=j+1
@@ -4644,7 +4109,7 @@ CloseFile(fileID)
 
 }
 
-//直接保存profiles 为xyy数据，目的是便于画图
+//save as xyy data
 else
 {
 image img:=getfrontimage()
@@ -4670,12 +4135,12 @@ Result("The exported profiles:  "+imgname+",     X is "+unitstring+"\n")
 number noslices=imgdisp.imagedisplaycountslices()
 
 number Q,yval,profileno=0
-for(number j=0; j<xsize; j++)    //j为像素
+for(number j=0; j<xsize; j++)  
 	{
 		Q=j*xscale		
 		WriteFile(fileID, Q+"    ")	
 		
-		for(number i=0;i<noslices;i++)  //i为图层
+		for(number i=0;i<noslices;i++) 
 			{
 				yval=img{i}.GetPixel(j,0)
 				WriteFile(fileID, ""+yval+"    ")	
@@ -4726,20 +4191,22 @@ for(number i=0; i<xsize; i++)
 }
 CloseFile(fileID)	
 }
-
 }
 }
 
-
+/*************************************************************************
+d_Angle Button: to measure d-spacing and angle
+*************************************************************************/
 void d_Angle(object self)
 {
 Result("-----------------------------------------------------------------------------------------\n1) Automatically locate 3 spots by the Space bar.\n2) Ctrl key: to automatically locate 2 spots.\n3) Alt key: to manually find 3 spots.\n-----------------------------------------------------------------------------------------\n")
 if(ControlDown())
 {
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+//clear lists and tags
+	TagGroup TgList1= self.LookUpElement("hklList1")
+	TagGroup TgList2= self.LookUpElement("hklList2")
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0) 
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -4767,7 +4234,6 @@ if(ControlDown())
 	deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List2")
 	}	
 	
-//主程序
 
 image  img:=getfrontimage()
 ImageDisplay imgdisp = img.ImageGetImageDisplay(0)
@@ -4778,7 +4244,7 @@ string imgname=img.getname()
 number centrex, centrey, x0,y0,x1,y1,x2,y2,x3,y3,x,y,xsize,ysize,xscale,yscale, top,left,bottom,right,width,times
 img.GetSize(xsize,ysize)
 
-//清除所有的roi、线、文字标记、圆环
+//clear all marks
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -4802,7 +4268,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -4810,7 +4275,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -4818,7 +4282,6 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//操作提示
 number radius=xsize/150,smooth
 
 if(radius<1)radius=2
@@ -4828,9 +4291,8 @@ textannot.componentsetfillmode(1)
 textannot.componentsetdrawingmode(2) 
 textannot.componentsetforegroundcolor(1,1,0)
 textannot.componentsetfontfacename("Microsoft Sans Serif")
-//imgdisp.componentaddchildatend(textannot)
 	
-number k=1,m=1,noclick=1,twoclicks=1,n //noclick:衍射点数，twoclick：first click defines the center, second click defines the width
+number k=1,m=1,noclick=1,twoclicks=1,n
 while(2>m)
 {
 number keypress=getkey()
@@ -4868,7 +4330,7 @@ y1=mouse_img_y
 img.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 
 		
-if(keypress==32) //鼠标取点
+if(keypress==32) //Space bar to mark it
 {
 number t,l,b,r,leftpart,rightpart
 img.GetSize(xsize,ysize)
@@ -4929,8 +4391,6 @@ m=2
 
 }
 
-
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -4938,7 +4398,7 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-for(number z=1;z<3;z++)  //分别精修各点
+for(number z=1;z<3;z++)  //and then refine these centers by Gaussian fitting
 {
 number centrex,centrey
 GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":X", centrex )
@@ -4947,18 +4407,15 @@ GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":Width", widt
 radius=0.6*width
 width=2*width
 
- //-------------开始用高斯拟合确定该点中心------------
 img := GetFrontImage()
 img.GetSize(xsize,ysize)
 
-//获取选区图
 image temp=img[centrey-width,centrex-width,centrey+width,centrex+width]
 top=centrey-width
 left=centrex-width
 temp.getsize(xsize,ysize)
 temp=( ( icol -(xsize+1)/2 )**2 + ( irow - (ysize+1)/2 )**2 < radius**2 ) ? temp : 0 
 
-// 放大times倍、cross corelation
 number x_0,y_0
 times=1
 times=1/times
@@ -4995,7 +4452,7 @@ image xpro=realimage("",4,19,1)
 image ypro=realimage("",4,19,1)
 
 xproj.SetSelection(0,0.05*xsize,1,0.95*xsize)
-for(number j=1;j<20;j++)//再设置weighting
+for(number j=1;j<20;j++)
 {
 weighting=j*0.5
 image peakfitx=FitGaussian(xproj, weighting, peakintensity, xpeakchannel,sigma, fwhm,ThisRpX)
@@ -5038,14 +4495,12 @@ Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:Y",y2)
 GetNumberNote(img,"ElectronDiffraction Tools:Center:X", x0 )
 GetNumberNote(img,"ElectronDiffraction Tools:Center:Y", y0)
 
-//转换为3点
 x3=x2
 y3=y2
 
 x2=x0
 y2=y0
 
-//输入衍射的级数
 string order="1,1"
 getstring("Orders of the diffraction spots (m,n)",order,order)
 
@@ -5062,7 +4517,6 @@ if(thischar==",")Bytes=len(left(order,i))
 m=val(left(order,Bytes))
 n=val(right(order,width-Bytes-1))
 
-//计算1级衍射的位置
 x1=x2+(x1-x2)/m
 y1=y2+(y1-y2)/m
 
@@ -5076,7 +4530,6 @@ Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:Y",y2)
 Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -5126,7 +4579,7 @@ self.lookupElement("d1field").dlgtitle(" "+format(10/(hypA*xscale), "%2.4f" ))
 self.lookupElement("d2field").dlgtitle(" "+format(10/(hypB*xscale), "%2.4f" ))
 self.lookupElement("Anglefield").dlgtitle(" "+format(totalangle, "%6.2f" ))
 
-//写入缓存
+//Save tags
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",10/(hypA*xscale))
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:d2",10/(hypB*xscale))
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",totalangle)
@@ -5149,10 +4602,11 @@ updateimage(img)
 
 else if(OptionDown())
 {
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+//clear lists and tags
+	TagGroup TgList1= self.LookUpElement("hklList1") 
+	TagGroup TgList2= self.LookUpElement("hklList2") 
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0)  
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -5184,7 +4638,6 @@ image  img:=getfrontimage()
 ImageDisplay imgdisp =img.ImageGetImageDisplay(0)
 string imgname=img.getname()
 
-//清除所有的roi、线、文字标记、圆环
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -5208,7 +4661,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -5216,7 +4668,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -5224,7 +4675,6 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//如果是复数，转为强度图
 if(img.ImageGetDataType()==3)
 {
 image magimg=sqrt(real(img)**2+imaginary(img)**2)
@@ -5289,26 +4739,10 @@ number annotationID
 		x1=mouse_img_x
 		y1=mouse_img_y
 
-//显示选区		
 frontimage.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 		
-if(keypress==32) // space bar 得到三点的初值
+if(keypress==32) // space bar to mark the centers
 {
-/*
-number cogx,cogy
-cogx=radius
-cogy=radius
-findcentreofgravity(frontimage[].Gaussfilter(10), cogx,cogy)  //重心法找点
-
-x1=x1-radius+cogx
-y1=y1-radius+cogy
-
-
-number maxval=frontimage[].max(x,y)
-x1=x1-radius+x
-y1=y1-radius+y
-*/
-
 Component box=NewBoxAnnotation(y1-radius,x1-radius,y1+radius,x1+radius)
 box.componentsetfillmode(2)
 box.componentsetforegroundcolor(1,0,0) // sets the foreground colour to magenta
@@ -5354,7 +4788,6 @@ Getnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot2:Y",y2
 Getnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Getnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//输入衍射的级数
 string order="1,1"
 getstring("Orders of the diffraction spots (m,n)",order,order)
 
@@ -5371,7 +4804,6 @@ if(thischar==",")Bytes=len(left(order,i))
 m=val(left(order,Bytes))
 n=val(right(order,width-Bytes-1))
 
-//计算1级衍射的位置
 x1=x2+(x1-x2)/m
 y1=y2+(y1-y2)/m
 
@@ -5383,7 +4815,6 @@ Setnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1
 Setnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Setnumbernote(frontimage,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -5424,7 +4855,6 @@ totalangle=round(totalangle*10)/10
 string outputstring=""+totalangle+" deg."
 
 // Data is output to the results window and onto the image
-
 result("R1= "+hypA*xscale+" nm-1,   d1= "+10/(hypA*xscale)+" A"+"\n")
 result("R2= "+hypB*xscale+" nm-1,   d2= "+10/(hypB*xscale)+" A"+"\n")
 result("Angle= "+outputstring+"\n\n")
@@ -5433,7 +4863,7 @@ self.lookupElement("d1field").dlgtitle(" "+format(10/(hypA*xscale), "%2.4f" ))
 self.lookupElement("d2field").dlgtitle(" "+format(10/(hypB*xscale), "%2.4f" ))
 self.lookupElement("Anglefield").dlgtitle(" "+format(totalangle, "%6.2f" ))
 
-//写入缓存
+//save tags
 Setnumbernote(frontimage,"ElectronDiffraction Tools:d-Angle:d1",10/(hypA*xscale))
 Setnumbernote(frontimage,"ElectronDiffraction Tools:d-Angle:d2",10/(hypB*xscale))
 Setnumbernote(frontimage,"ElectronDiffraction Tools:d-Angle:Angle",totalangle)
@@ -5444,10 +4874,11 @@ updateimage(frontimage)
 
 else
 {
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+//clear tags and lists
+	TagGroup TgList1= self.LookUpElement("hklList1") 
+	TagGroup TgList2= self.LookUpElement("hklList2") 
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0) 
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -5475,7 +4906,6 @@ else
 	deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List2")
 	}	
 	
-//主程序
 image  img:=getfrontimage()
 ImageDisplay imgdisp = img.ImageGetImageDisplay(0)
 ImageDocument  imgdoc=getfrontimagedocument()
@@ -5485,7 +4915,6 @@ string imgname=img.getname()
 number centrex, centrey, x0,y0,x1,y1,x2,y2,x3,y3,x,y,xsize,ysize,xscale,yscale, top,left,bottom,right,width,times
 img.GetSize(xsize,ysize)
 
-//清除所有的roi、线、文字标记、圆环
 number i
 number annots= imgdisp.ImageDisplayCountROIS()
 for (i=0; i<annots; i++)
@@ -5509,7 +4938,6 @@ component annotid=imgdisp.componentgetnthchildoftype(2,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (i=0; i<annots; i++)
 {
@@ -5517,7 +4945,6 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-//删除已有的圆环
 annots=imgdisp.componentcountchildrenoftype(6)
 for (i=0; i<annots; i++)
 {
@@ -5525,7 +4952,6 @@ component annotid=imgdisp.componentgetnthchildoftype(6,0)
 annotid.componentremovefromparent()
 }
 
-//操作提示
 number radius=xsize/150,smooth
 
 if(radius<1)radius=2
@@ -5535,9 +4961,8 @@ textannot.componentsetfillmode(1)
 textannot.componentsetdrawingmode(2) 
 textannot.componentsetforegroundcolor(1,1,0)
 textannot.componentsetfontfacename("Microsoft Sans Serif")
-//imgdisp.componentaddchildatend(textannot)
 	
-number k=1,m=1,noclick=1,twoclicks=1,n //noclick:衍射点数，twoclick：first click defines the center, second click defines the width
+number k=1,m=1,noclick=1,twoclicks=1,n
 while(2>m)
 {
 number keypress=getkey()
@@ -5575,7 +5000,7 @@ y1=mouse_img_y
 img.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
 
 		
-if(keypress==32) //鼠标取点
+if(keypress==32) //Space bar to mark it
 {
 number t,l,b,r,leftpart,rightpart
 img.GetSize(xsize,ysize)
@@ -5589,7 +5014,6 @@ x1=(leftpart+rightpart)/2
 number width_v=fwhm(profile_v,y1,leftpart,rightpart)
 y1=(leftpart+rightpart)/2
 
-//radius=1*(width_h+width_v)/2
 Component box=NewBoxAnnotation(y1-0.5*radius,x1-0.5*radius,y1+0.5*radius,x1+0.5*radius)
 box.componentsetfillmode(2)
 box.componentsetforegroundcolor(1,0,0) // sets the foreground colour to magenta
@@ -5599,16 +5023,6 @@ SetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+noclick+":X", x1
 SetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+noclick+":Y", y1 )
 SetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+noclick+":Width", (width_h+width_v)/2)
                                                                                  
-if(noclick==1)                                                           
-{                                                                              
-//radius=1*radius
-}
-
-else if(noclick==2)
-{
-//radius=1*radius
-}
-
 img.ClearSelection()
 noclick=noclick+1
 }
@@ -5636,8 +5050,6 @@ m=2
 
 }
 
-
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -5645,7 +5057,7 @@ component annotid=imgdisp.componentgetnthchildoftype(5,0)
 annotid.componentremovefromparent()
 }
 
-for(number z=1;z<4;z++)  //分别精修各点
+for(number z=1;z<4;z++)  //and then refine centers by Gaussian fitting
 {
 number centrex,centrey
 GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":X", centrex )
@@ -5654,18 +5066,15 @@ GetNumberNote(img,"ElectronDiffraction Tools:Live profile:Spot"+z+":Width", widt
 radius=0.6*width
 width=2*width
 
- //-------------开始用高斯拟合确定该点中心------------
 img := GetFrontImage()
 img.GetSize(xsize,ysize)
 
-//获取选区图
 image temp=img[centrey-width,centrex-width,centrey+width,centrex+width]
 top=centrey-width
 left=centrex-width
 temp.getsize(xsize,ysize)
 temp=( ( icol -(xsize+1)/2 )**2 + ( irow - (ysize+1)/2 )**2 < radius**2 ) ? temp : 0 
 
-// 放大times倍、cross corelation
 number x_0,y_0
 times=1
 times=1/times
@@ -5675,7 +5084,6 @@ new = temp.warp(icol*times,irow*times)
 number fwhm,leftpart,rightpart
 
 new=new.Gaussfilter(20)
-
 new.GetSize(xsize,ysize)
 
 image xproj=realimage("",4,xsize,1)
@@ -5702,7 +5110,7 @@ image xpro=realimage("",4,19,1)
 image ypro=realimage("",4,19,1)
 
 xproj.SetSelection(0,0.05*xsize,1,0.95*xsize)
-for(number j=1;j<20;j++)//再设置weighting
+for(number j=1;j<20;j++)
 {
 weighting=j*0.5
 image peakfitx=FitGaussian(xproj, weighting, peakintensity, xpeakchannel,sigma, fwhm,ThisRpX)
@@ -5746,10 +5154,8 @@ Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:Y",y2)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//输入衍射的级数
 string order="1,1"
 getstring("Orders of the diffraction spots (m,n)",order,order)
-
 
 number Bytes=1
 width=len(order)
@@ -5763,7 +5169,6 @@ if(thischar==",")Bytes=len(left(order,i))
 m=val(left(order,Bytes))
 n=val(right(order,width-Bytes-1))
 
-//计算1级衍射的位置
 x1=x2+(x1-x2)/m
 y1=y2+(y1-y2)/m
 
@@ -5775,7 +5180,6 @@ Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
 Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Setnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//删除已有的矩形框
 annots=imgdisp.componentcountchildrenoftype(5)
 for (number i=0; i<annots; i++)
 {
@@ -5825,7 +5229,7 @@ self.lookupElement("d1field").dlgtitle(" "+format(10/(hypA*xscale), "%2.4f" ))
 self.lookupElement("d2field").dlgtitle(" "+format(10/(hypB*xscale), "%2.4f" ))
 self.lookupElement("Anglefield").dlgtitle(" "+format(totalangle, "%6.2f" ))
 
-//写入缓存
+//Save tags
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",10/(hypA*xscale))
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:d2",10/(hypB*xscale))
 Setnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",totalangle)
@@ -5845,10 +5249,11 @@ SetPersistentNumberNote("ElectronDiffraction Tools:Crystal Tools:d-Angle:Angle",
 deletenote(img,"ElectronDiffraction Tools:Live profile") 
 updateimage(img)
 }
-
 }
+
+
 /*************************************************************************
-CalcButton
+Calc. Button: to perform pattern indexing or extract d-spacing table
 *************************************************************************/
 void CalcButton(object self)
 {
@@ -5890,7 +5295,6 @@ getnumber("d1 (A)",d1,d1)
 getnumber("d2 (A)",d2,d2)
 getnumber("Theta (deg.)",angle,angle)
 
-//清除图片上的标记
 number annots=imgdisp.componentcountchildrenoftype(9) 
 for (number i=0; i<annots; i++)
 {
@@ -5905,7 +5309,7 @@ component annotid=imgdisp.componentgetnthchildoftype(13,0)
 annotid.componentremovefromparent()
 }
 
-number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r//(x1,y1)为第一点，(x2,y2)中间点，(x1_r,y1_r)为第一个校正点
+number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",angleval)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
@@ -5923,19 +5327,19 @@ number r1_exp=sqrt((x1-x2)**2+(y1-y2)**2)
 x1_r=x2+1*r1_cal*(x1-x2)/r1_exp
 y1_r=y2+1*r1_cal*(y1-y2)/r1_exp
 
-//用第一个点和theta校正第三个点
-angle=(180-angle)*pi()/180 //角度转换
+//d and angle correction
+angle=(180-angle)*pi()/180
 number r3_cal=(10/d2)/xscale
 number x3_r=(r3_cal/r1_cal)*(((x1-x2)*cos(angle)-(y1-y2)*sin(angle)))+x2
 number y3_r=(r3_cal/r1_cal)*(((x1-x2)*sin(angle)+(y1-y2)*cos(angle)))+y2
 
-//----------------------开始衍射点扩展，得到d-值表-------------------------------
+//----------------------begin to calculate a d-spacing table-------------------------------
 number xij,yij,dij
 for(number i=-50;i<=50;i++)
 {
 for(number j=-50;j<50;j++)
 {
-if(i==0&&j==0)continue //不考虑中心点
+if(i==0&&j==0)continue
 
 xij=i*(x1_r-x2)+x2+j*(x3_r-x2)
 yij=i*(y1_r-y2)+y2+j*(y3_r-y2)
@@ -5944,16 +5348,12 @@ if(xij>0&&xij<xsize&&yij>0&&yij<ysize)
 {
 dij=10/(sqrt((xij-x2)**2+(yij-y2)**2 )*xscale)
 
-//由于电子衍射具有180对称，只需输出一半即可
 if(xij>=x2)SetstringNote(img,"ElectronDiffraction Tools:Temp:"+format(dij,"%2.4f"), format(dij,"%2.4f"))
 }
 }
 }
 
-
-
-
-//------------------以(x2,y2)为中间点，添加设定半径的mask，显示mask图----------------------------
+//------------------get masked and unmasked images----------------------------
 number radius=1
 getnumber("Spot size of the array mask ? ",radius,radius)
 
@@ -5962,9 +5362,9 @@ setNumberNote(img,"ElectronDiffraction Tools:Center:Y", y2)
 img.setorigin(x2,y2)
 
 component mask=newcomponent(9,0,0,0,0) //Array mask
-mask.ComponentSetControlPoint(9,x1_r-x2,y1_r-y2,1)//设置1st矢量
-mask.ComponentSetControlPoint(10,x3_r-x2,y3_r-y2,1)//设置2nd矢量
-mask.ComponentSetControlPoint(4,radius,radius,1)//设置点的半径
+mask.ComponentSetControlPoint(9,x1_r-x2,y1_r-y2,1)//1st spot
+mask.ComponentSetControlPoint(10,x3_r-x2,y3_r-y2,1)//2nd spot
+mask.ComponentSetControlPoint(4,radius,radius,1)//radius
 imgdisp.componentaddchildatend(mask)
 
 number hasmask,edge=3
@@ -5982,9 +5382,7 @@ maskimg.setorigin(x2,y2)
 maskimg.SetName("Masked image-"+img.GetName())
 maskimg.setstringnote("ElectronDiffraction Tools:File type","SAED")
 
-//componentremovefromparent(imgdisp.componentgetnthchildoftype(9,0))
-
-//-------------------------------之后获取最大的profile---------------------
+//-------------------------------get intensity profiles---------------------
 maskimg.GetSize(xsize,ysize)
 number samples=ysize
 number k=2*Pi()/samples
@@ -6011,6 +5409,7 @@ break
 }
 }
 
+//save d-spacing table
 profile=10000*profile/profile.max()
 
 profile.ShowImage()
@@ -6037,13 +5436,13 @@ if(unit=="s")
 {
 xscale=linearimg.ImageGetDimensionScale(0)
 profile.imagesetdimensionscale(0,xscale)
-profile.imagesetdimensionunitstring(0,"s (1/nm)") //标定为s
+profile.imagesetdimensionunitstring(0,"s (1/nm)") 
 
 string filename
 If (!SaveAsDialog("Save d-spacing table as   *.dsp   file", GetApplicationDirectory(2,0) +imgname+ ".dsp", filename)) Exit(0)
 
 number fileID = CreateFileForWriting(filename)
-WriteFile(fileID, "\n"+no+"    DSPACE    0.1     US     RIR= 0\n")  //文件头
+WriteFile(fileID, "\n"+no+"    DSPACE    0.1     US     RIR= 0\n") 
 
 for(number i=no-1;i>-1;i--)
 {
@@ -6059,14 +5458,13 @@ if(unit=="Q")
 {
 xscale=linearimg.ImageGetDimensionScale(0)/10*2*pi()
 profile.imagesetdimensionscale(0,xscale)
-profile.imagesetdimensionunitstring(0,"Q (1/A)") //标定为Q
+profile.imagesetdimensionunitstring(0,"Q (1/A)")
 
 string filename
 If (!SaveAsDialog("Save d-spacing table as   *.dsp   file", GetApplicationDirectory(2,0) +imgname+ ".dsp", filename)) Exit(0)
 
 number fileID = CreateFileForWriting(filename)
-WriteFile(fileID, "\n"+no+"    DSPACE    0.1     US     RIR= 0\n")  //文件头
-
+WriteFile(fileID, "\n"+no+"    DSPACE    0.1     US     RIR= 0\n")  
 
 for(number i=no-1;i>-1;i--)
 {
@@ -6079,7 +5477,6 @@ CloseFile(fileID)
 }
 				
 deletenote(img,"ElectronDiffraction Tools:Temp")
-
 }
 
 //
@@ -6118,7 +5515,6 @@ getnumber("d1 (A)",d1,d1)
 getnumber("d2 (A)",d2,d2)
 getnumber("Theta (deg.)",angle,angle)
 
-//清除图片上的标记
 number annots=imgdisp.componentcountchildrenoftype(6) 
 for (number i=0; i<annots; i++)
 {
@@ -6133,7 +5529,7 @@ component annotid=imgdisp.componentgetnthchildoftype(13,0)
 annotid.componentremovefromparent()
 }
 
-number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r//(x1,y1)为第一点，(x2,y2)中间点，(x1_r,y1_r)为第一个校正点
+number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",angleval)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
@@ -6156,8 +5552,8 @@ spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 imgdisp.componentaddchildatend(spot1)
 
-//用第一个点和theta校正第三个点
-angle=(180-angle)*pi()/180 //角度转换
+//d and angle correction
+angle=(180-angle)*pi()/180 
 number r3_cal=(10/d2)/xscale
 number x3_r=(r3_cal/r1_cal)*(((x1-x2)*cos(angle)-(y1-y2)*sin(angle)))+x2
 number y3_r=(r3_cal/r1_cal)*(((x1-x2)*sin(angle)+(y1-y2)*cos(angle)))+y2
@@ -6167,13 +5563,12 @@ spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 imgdisp.componentaddchildatend(spot1)
 
-//开始衍射点扩展
 number xij,yij,dij
 for(number i=-20;i<=20;i++)
 {
 for(number j=-20;j<20;j++)
 {
-if(i==0&&j==0)continue //不考虑中心点
+if(i==0&&j==0)continue //skip for 00
 
 xij=i*(x1_r-x2)+x2+j*(x3_r-x2)
 yij=i*(y1_r-y2)+y2+j*(y3_r-y2)
@@ -6182,10 +5577,8 @@ if(xij>0&&xij<xsize&&yij>0&&yij<ysize)
 {
 dij=10/(sqrt((xij-x2)**2+(yij-y2)**2 )*xscale)
 
-//由于电子衍射具有180对称，只需输出一半即可
 if(xij>=x2)SetstringNote(img,"ElectronDiffraction Tools:Temp:"+format(dij,"%2.4f"), format(dij,"%2.4f"))
 
-//显示标记
 spot1=newovalannotation(yij-spotsize, xij-spotsize, yij+spotsize, xij+spotsize)
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
@@ -6195,6 +5588,7 @@ imgdisp.componentaddchildatend(spot1)
 }
 }
 
+//save d-spacing table
 documentwindow dspacingtable=newscriptwindow("d-spacing Table-"+imgname,400, 200, 650, 800)
 windowshow(dspacingtable)
 windowselect(dspacingtable)
@@ -6220,11 +5614,10 @@ deletenote(img,"ElectronDiffraction Tools:Temp")
 
 else
 {
-//清除图片上的标记
 image img:=GetFrontImage()
 ImageDisplay imgdisp=img.ImageGetImageDisplay(0)
 
-number annots=imgdisp.componentcountchildrenoftype(6) //删除已添加的点
+number annots=imgdisp.componentcountchildrenoftype(6) 
 for (number i=0; i<annots; i++)
 {
 component annotid=imgdisp.componentgetnthchildoftype(6,0)
@@ -6242,12 +5635,11 @@ annotid.componentremovefromparent()
 	number maxhklval, mindval
 	string crystalname
 
-	//清除缓存中的临时文件、已有d-值表
-	//删除临时缓存	
-	TagGroup TgList1= self.LookUpElement("hklList1")  //找list1
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-	TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-	uvwList.DLGRemoveElement(0)  //删除已有带轴
+	//clear all list and tags
+	TagGroup TgList1= self.LookUpElement("hklList1") 
+	TagGroup TgList2= self.LookUpElement("hklList2") 
+	TagGroup uvwList= self.LookUpElement("uvwList")
+	uvwList.DLGRemoveElement(0)  
 	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -6275,8 +5667,8 @@ annotid.componentremovefromparent()
 	deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List2")
 	}
 
-//------------------1) 由晶格常数计算d-值表	
-	// 从输入框获取晶体信息
+//------------------1) calculate d-spacing table	------------------
+	// read lattice parameters
 	self.dlggetvalue("crystalradios",crystalvalue)
 	self.dlggetvalue("alphafield",alpha)
 	self.dlggetvalue("betafield",beta)
@@ -6285,38 +5677,32 @@ annotid.componentremovefromparent()
 	self.dlggetvalue("bfield",b)
 	self.dlggetvalue("cfield",c)
 	
-	//从缓存中读取hkl和d的极值
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:maxhkl",maxhklval)
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:mind",mindval)
 
-		// 角度换算
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 		
-		//删除缓存
 		taggroup mcptags
 	    ptags=getpersistenttaggroup()
 
-		// 晶体学数据不能为负值
 		if(a<=0 || b<=0 || c<=0 || alpha<=0 || beta<=0 || gamma<=0 )
 			{
 				beep()
 				exit(0)
 			}
 
-	// 开始计算d-值表
+	// begin to calculate d-spacing
 	for(h=maxhklval; h>=-maxhklval; h--)
 	{
 		for(k=maxhklval; k>=-maxhklval; k--)
 		{
 			for(l=maxhklval; l>=-maxhklval; l--)
 				{
-				//hkl皆为0
 					if(h**2+k**2+l**2==0) continue
 
-					// 按晶系来计算
-					if(crystalvalue==1) // 立方晶系
+					if(crystalvalue==1) // Cubic
 					{
 						dspacing=sqrt(a**2/(h**2+k**2+l**2))
 						crystalname="Cubic"
@@ -6326,10 +5712,9 @@ annotid.componentremovefromparent()
 						setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:dspacing:"+dspacing+":"+no+":l",l)
 
 						no=no+1
-					
 					}
 
-					if(crystalvalue==2) // 四方晶系
+					if(crystalvalue==2) // Tetragonal
 					{
 						number temp=((1/a**2)*(h**2+k**2))+((1/c**2)*l**2)
 						dspacing=sqrt(1/temp)
@@ -6342,7 +5727,7 @@ annotid.componentremovefromparent()
 						no=no+1						
 					}
 
-					if(crystalvalue==3) //正交晶系
+					if(crystalvalue==3) //Orthorhombic
 					{
 						number temp=(((1/a**2)*h**2)+((1/b**2)*k**2)+((1/c**2)*l**2))
 						dspacing=sqrt(1/temp)
@@ -6355,7 +5740,7 @@ annotid.componentremovefromparent()
 						no=no+1						
 					}
 	
-					if(crystalvalue==4) //六角晶系
+					if(crystalvalue==4) //Hexagonal
 					{
 
 						number temp=((4/(3*a**2))*(h**2+(h*k)+k**2)+((1/c**2)*l**2))
@@ -6369,7 +5754,7 @@ annotid.componentremovefromparent()
 						no=no+1						
 					}
 
-					if(crystalvalue==5) //菱方晶系
+					if(crystalvalue==5) //Rhombohedral
 					{
 						number temp1=((h**2+k**2+l**2)*sin(alpha)**2)+(2*((h*k)+(k*l)+(h*l))*(cos(alpha)**2-cos(alpha)))
 						number temp2=a**2*(1-(3*cos(alpha)**2)+(2*cos(alpha)**3))
@@ -6384,7 +5769,7 @@ annotid.componentremovefromparent()
 						no=no+1						
 					}	
 
-					if(crystalvalue==6) //单斜晶系
+					if(crystalvalue==6) //Monoclinic
 					{
 						number temp=((1/a**2)*(h**2/sin(beta)**2))+((1/b**2)*k**2)+((1/c**2)*(l**2/sin(beta)**2))-((2*h*l*cos(beta))/(a*c*sin(beta)**2))
 						dspacing=sqrt(1/temp)
@@ -6397,7 +5782,7 @@ annotid.componentremovefromparent()
 						no=no+1						
 					}
 
-					if(crystalvalue==7) //三斜晶系
+					if(crystalvalue==7) //Triclinic
 					{
 						number V2=a**2*b**2*c**2*(1-cos(alpha)**2-cos(beta)**2-cos(gamma)**2+(2*cos(alpha)*cos(beta)*cos(gamma)))
 						number s11=b**2*c**2*sin(alpha)**2
@@ -6423,20 +5808,18 @@ annotid.componentremovefromparent()
 		}
 	}
 
-//------------------2) 在误差范围内寻找晶面，更新list1
+//------------------2) search d with the given error------------------
 number d1val, d2val,Error_d
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",d1val)  	
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",d2val)  
 Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Error d",Error_d)
 	 
-//d值寻找范围
 number maxd1=d1val+Error_d
 number mind1=d1val-Error_d
 
 ptags=getpersistenttaggroup()	
 ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing", dspacingtags)
 
-//dspacing-table目录下的峰数目
 number peakno=dspacingtags.taggroupcounttags()
 
 for(number i=1; i<peakno+1; i++)
@@ -6445,11 +5828,10 @@ for(number i=1; i<peakno+1; i++)
 		  string mcplabel = dspacingtags.TagGroupGetTaglabel( i-1 )
 		  
 		  d=val(mcplabel)		  
-		  number delta_d1=abs(d1val-d )   //实验值与理论值的差异
+		  number delta_d1=abs(d1val-d )   
 		  		  
-		   if(d<maxd1 && d>mind1)  //寻找与d1相近的hkl存到list1中
+		   if(d<maxd1 && d>mind1)  
                 {
-				//读取每个d下的第一个hkl
 				 taggroup peaktags,peaks
 				 peaktags=getpersistenttaggroup()
 				 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d, peaks)
@@ -6468,11 +5850,9 @@ for(number i=1; i<peakno+1; i++)
 				Setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d1+":k",k)
 				Setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d1+":l",l)
 				}
-				
-			
 		}
 
-//d1值误差从小到大输出
+//order the d-spacing table
 	 taggroup peaktags,peaks
 	 peaktags=getpersistenttaggroup()
 	 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:List1",peaks)
@@ -6488,18 +5868,18 @@ for(number i=1; i<peakno+1; i++)
      getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+peakvalue+":k",k)
 	 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+peakvalue+":l",l)	
 	 
-	 //更新list选择列表
+	 //update the list1
 	 TgList1.DLGAddListItem(format(100*peakvalue/d, "%2.1f")+"|("+h+","+k+","+l+")",0)
 	 }
 	 }
 }
 
 /*************************************************************************
-hklList1Changed
+hklList1Changed: to response when hkl list1 is changed
 *************************************************************************/
 void hklList1Changed(object self, taggroup tg)
 {
-//删除已有带轴
+//clear lists
 TagGroup uvwList= self.LookUpElement("uvwList")
 uvwList.DLGRemoveElement(0)  
 
@@ -6518,20 +5898,18 @@ taggroup peaktags,peaks
 peaktags=getpersistenttaggroup()
 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:List1", peaks)
 
-number no=	tg.dlggetvalue() //选了哪个，在list1缓存中找到它				 
+number no=	tg.dlggetvalue() 		 
 String peaklabel = peaks.TagGroupGetTaglabel(no)
 number delta_d=val(peaklabel)
 
-number d1,h1,k1,l1,d2,h2,k2,l2,deltad1//为计算值
+number d1,h1,k1,l1,d2,h2,k2,l2,deltad1
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d+":d",d1)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d+":h",h1)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d+":k",k1)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d+":l",l1)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d+":delta d",deltad1)
-//Result("d1="+format(d1, "%2.4f" )+"("+format(d1, "%2.1f")+"), ("+h1+","+k1+","+l1+")\n")
 
-//删除list2缓存
-	TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
+	TagGroup TgList2= self.LookUpElement("hklList2") 
 
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
@@ -6541,23 +5919,22 @@ getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List1:"+delta_d
 	number tagno=dspacingtags.taggroupcounttags()
 	for(number i=0;i<200;i++)
 	{
-	//删除list2列表
 	TgList2.DLGRemoveElement(0)
 	}
 	
 	deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List2")
 	}
 
-number Error_d,Error_angle  //读取误差
+number Error_d,Error_angle  
 Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Error d",Error_d)
 Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Error Angle",Error_angle)	
 	 
-number d1val,d2val,angleval  //测量值，读取初始值
+number d1val,d2val,angleval  
 image img:=GetFrontImage()
 ImageDisplay imgdisp=img.ImageGetImageDisplay(0)
 
-//在list1中选中的点显示在SAED中
-number annots=imgdisp.componentcountchildrenoftype(6) //删除已添加的点和hkl标记
+//display the selected spots on the SAED
+number annots=imgdisp.componentcountchildrenoftype(6) 
 for (number i=0; i<annots; i++)
 {
 component annotid=imgdisp.componentgetnthchildoftype(6,0)
@@ -6575,7 +5952,7 @@ number xsize,ysize
 number xscale=img.imagegetdimensionscale(0)
 img.getsize(xsize,ysize)
 
-number x1,y1,x2,y2,x,y//(x1,y1)为第一点，(x2,y2)为中间点，(x,y)为计算点
+number x1,y1,x2,y2,x,y
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:X",x2)
@@ -6600,7 +5977,6 @@ textannot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 textannot1.componentsetfontfacename(fonttype) 
 imgdisp.componentaddchildatend(textannot1)
 
-//定义误差
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d1",d1val)
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:d2",d2val)
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",angleval)
@@ -6610,8 +5986,8 @@ number mind2=d2val-Error_d
 number maxAngle=angleval+Error_angle
 number minAngle=angleval-Error_angle
 
-//读取晶体学数据
-number crystalvalue,alpha,beta,gamma,a,b,c,angle,interAngle//夹角
+//read lattice parameters of the selected crystal
+number crystalvalue,alpha,beta,gamma,a,b,c,angle,interAngle
 string crystalname
 		self.dlggetvalue("alphafield",alpha)
 		self.dlggetvalue("betafield",beta)
@@ -6631,13 +6007,12 @@ string crystalname
 		if(crystalvalue==6) crystalname="M"
 		if(crystalvalue==7) crystalname="A"
 		
-		// 角度换算
  		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 		angle=angle/(180/pi())
 
-//读取缓存，d2匹配
+//read tags and match d2
 ptags=getpersistenttaggroup()	
 dspacingtags 
 ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing", dspacingtags)
@@ -6648,11 +6023,10 @@ for(number i=1; i<peakno+1; i++)
 		  string mcplabel = dspacingtags.TagGroupGetTaglabel( i-1 )		  
 		  d2=val(mcplabel)
 		  
-		  number deltad2=abs(d2val-d2 )   //实验值与理论值的差异
+		  number deltad2=abs(d2val-d2 )   
 		  		 
 		   if(d2<maxd2 && d2>mind2)
                 {
-				//读取每个d下的hkl
 				 taggroup peaktags,peaks
 				 peaktags=getpersistenttaggroup()
 				 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d2, peaks)
@@ -6667,12 +6041,10 @@ for(number i=1; i<peakno+1; i++)
                 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d2+":"+peakvalue+":k",k2)
 				getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d2+":"+peakvalue+":l",l2)
 				
-				//开始计算夹角
-				//hkl皆为0
 					if(h2**2+k2**2+l2**2==0) continue			
 
-		//-----------------------以下用于计算角度-----------------------------			
-		if(crystalvalue==1) //立方
+		//-----------------------begin to calculate angles-----------------------------			
+		if(crystalvalue==1) //Cubic
 			{
 				number costheta, temp1, temp2
 				temp1=(h1*h2)+(k1*k2)+(l1*l2)
@@ -6684,7 +6056,7 @@ for(number i=1; i<peakno+1; i++)
 				crystalname="Cubic"
 			}
 
-		if(crystalvalue==2) //四方
+		if(crystalvalue==2) //Tetragonal
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=((1/a**2)*((h1*h2)+(k1*k2)))+((1/c**2)*l1*l2)
@@ -6698,7 +6070,7 @@ for(number i=1; i<peakno+1; i++)
 				crystalname="Tetragonal"
 			}
 
-		if(crystalvalue==3) //正交
+		if(crystalvalue==3) //Orthorhombic
 			{
 				number costheta, temp1, temp2, temp3, temp4
 				temp1=((1/a**2)*h1*h2)+((1/b**2)*k1*k2)+((1/c**2)*l1*l2)
@@ -6709,7 +6081,7 @@ for(number i=1; i<peakno+1; i++)
 				costheta=temp1/temp4
 				interAngle=acos(costheta)
 				interAngle=interAngle*(180/pi())
-				crystalname="Orthorhombic"
+				crystalname="Hexagonal"
 			}
 
 		if(crystalvalue==4) //六角
@@ -6726,26 +6098,22 @@ for(number i=1; i<peakno+1; i++)
 				crystalname="Hexagonal"
 			}
 
-		if(crystalvalue==5) //菱方
+		if(crystalvalue==5) //Rhombohedral
 			{
 				number costheta, temp, temp1, temp2, temp3, temp4, cellvol, d1, d2
 
-				//根据h1k1l1 计算d1			
 				temp=(1/a**2)
 				temp3=(1+cos(alpha)-(2*(cos(alpha)**2)))
 				temp2=(1+cos(alpha))*((h1**2+k1**2+l1**2)-((1-tan(0.5*alpha)**2)*((h1*k1)+(k1*l1)+(l1*h1))))
 				temp4=(temp*temp2)/temp3
 				d1=sqrt(1/temp4)
 
-				// 根据h2k2l2 计算d2			
 				temp2=(1+cos(alpha))*((h2**2+k2**2+l2**2)-((1-tan(0.5*alpha)**2)*((h2*k2)+(k2*l2)+(l2*h2))))
 				temp4=(temp*temp2)/temp3
 				d2=sqrt(1/temp4)
 
-				// 单胞体积
 				cellvol=a**3*sqrt((1-(3*cos(alpha)**2)+(2*cos(alpha)**3)))
 
-				// 计算夹角
 				temp1=(a**4*d1*d2)/cellvol**2
 				temp2=sin(alpha)**2*((h1*h2)+(k1*k2)+(l1*l2))
 				temp3=(cos(alpha)**2-cos(alpha))*((k1*l2)+(k2*l1)+(l1*h2)+(l2*h1)+(h1*k2)+(h2*k1))
@@ -6756,7 +6124,7 @@ for(number i=1; i<peakno+1; i++)
 				crystalname="Rhombohedral"
 			}
 
-		if(crystalvalue==6) //单斜
+		if(crystalvalue==6) //Monoclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4
 
@@ -6771,7 +6139,7 @@ for(number i=1; i<peakno+1; i++)
 				crystalname="Monoclinic"
 			}
 
-		if(crystalvalue==7) // 三斜
+		if(crystalvalue==7) // Triclinic
 			{
 				number costheta, temp1, temp2, temp3, temp4, temp5, temp6, temp7, temp8, temp9, temp10, temp11, temp12
 
@@ -6805,15 +6173,14 @@ for(number i=1; i<peakno+1; i++)
 			number deltaAngle
 			deltaAngle=abs(Angleval-interAngle)
 
-			//在角度范围内寻找，并计算带轴
+			//for the matched hkl planes
 			if(deltaAngle<=Error_Angle)
                 {					
-				//计算带轴	   
+				//calculate zone axis direction	   
 				number u=(k1*l2)-(k2*l1)
 				number v=(l1*h2)-(l2*h1)
 				number w=(h1*k2)-(h2*k1)  
 	  
-				// 归一化
 				number divisor=CrystUIFrame.NormaliseIndices(u,v,w)
 				u=round(u*100)/100
 				v=round(v*100)/100
@@ -6840,7 +6207,7 @@ for(number i=1; i<peakno+1; i++)
 				}		
 }
 
-//显示到hkl 列表中
+//update the lists
 number deltad2,deltaangle
 taggroup list2peaks
 	 peaktags=getpersistenttaggroup()
@@ -6859,20 +6226,19 @@ taggroup list2peaks
 	 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+peakvalue+":delta d2",deltad2)
 	 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+peakvalue+":delta Angle",deltaangle)
 	 
-	 //更新list选择列表
 	 TgList2.DLGAddListItem(format(100*peakvalue/d2, "%2.1f")+"|"+format(100*deltaangle/angleval, "%2.1f") +"|("+h2+","+k2+","+l2+")",0)
 	 }
 }
 
 /*************************************************************************
-hklList2Changed
+hklList2Changed: to reponse when hkl list2 is changed
 *************************************************************************/
 void hklList2Changed(object self, taggroup tg)
 {
-number no=	tg.dlggetvalue() //选了哪个，在list1缓存中找到它
-TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-TagGroup uvwList= self.LookUpElement("uvwList")  //找list2
-uvwList.DLGRemoveElement(0)  //删除已有带轴
+number no=	tg.dlggetvalue()
+TagGroup TgList2= self.LookUpElement("hklList2")  
+TagGroup uvwList= self.LookUpElement("uvwList") 
+uvwList.DLGRemoveElement(0)
 
 TagGroup sizefield= self.LookUpElement("sizefield")  //spot size
 number spotsize=sizefield.dlggetvalue()
@@ -6912,11 +6278,11 @@ Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+deltad2
 
 uvwList.DLGAddListItem("["+u + ", "+v+", "+w+"]",0)
 
-//清除图片上的标记
+//clear marks
 image img:=GetFrontImage()
 ImageDisplay imgdisp=img.ImageGetImageDisplay(0)
 
-number annots=imgdisp.componentcountchildrenoftype(6) //删除已添加的点
+number annots=imgdisp.componentcountchildrenoftype(6)
 for (number i=0; i<annots; i++)
 {
 component annotid=imgdisp.componentgetnthchildoftype(6,0)
@@ -6934,7 +6300,7 @@ number xsize,ysize
 number xscale=img.imagegetdimensionscale(0)
 img.getsize(xsize,ysize)
 
-number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r//(x1,y1)为第一点，(x2,y2)中间点，(x1_r,y1_r)为第一个校正点
+number angleval,x1,y1,x2,y2,x3,y3,x1_r,y1_r
 Getnumbernote(img,"ElectronDiffraction Tools:d-Angle:Angle",angleval)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
@@ -6964,13 +6330,12 @@ textannot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 textannot1.componentsetfontfacename(fonttype) 
 imgdisp.componentaddchildatend(textannot1)
 
-//用第一个点和theta校正第三个点
+//d and angle corrections
 angle=(180-angle)*pi()/180 //角度转换
 number r3_cal=(10/d2)/xscale
 number x3_r=(r3_cal/r1_cal)*(((x1-x2)*cos(angle)-(y1-y2)*sin(angle)))+x2
 number y3_r=(r3_cal/r1_cal)*(((x1-x2)*sin(angle)+(y1-y2)*cos(angle)))+y2
 
-//如果是180°点，则反过来
 if(sqrt((x3_r-x3)**2+(y3_r-y3)**2)>sqrt((x3-x2)**2+(y3-y2)**2))
 {
 x3_r=2*x2-x3_r
@@ -6982,38 +6347,32 @@ spot1=newovalannotation(y3_r-spotsize, x3_r-spotsize, y3_r+spotsize, x3_r+spotsi
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
-//imgdisp.componentaddchildatend(spot1)
 
 fonttype="Microsoft Sans Serif"
 textannot1=newtextannotation(x3,y3, ""+h2+","+k2+","+l2, 2*spotsize)
 textannot1.componentsetdrawingmode(2)
 textannot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 textannot1.componentsetfontfacename(fonttype) 
-//imgdisp.componentaddchildatend(textannot1)
 
 number h3,k3,l3
-
-//开始衍射点扩展
 number xij,yij
 for(number i=-10;i<=10;i++)
 {
 for(number j=-10;j<10;j++)
 {
-if(i==0&&j==0)continue //不考虑中心点
+if(i==0&&j==0)continue //skip for 00
 
 xij=i*(x1_r-x2)+x2+j*(x3_r-x2)
 yij=i*(y1_r-y2)+y2+j*(y3_r-y2)
 
 if(xij>0&&xij<xsize&&yij>0&&yij<ysize)
 {
-//显示标记
 spot1=newovalannotation(yij-spotsize, xij-spotsize, yij+spotsize, xij+spotsize)
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 imgdisp.componentaddchildatend(spot1)
 
-//显示hkl
 h3=i*h1+j*h2
 k3=i*k1+j*k2
 l3=i*l1+j*l2
@@ -7027,16 +6386,15 @@ imgdisp.componentaddchildatend(textannot1)
 }
 }
 }
-
 }
 
 /*************************************************************************
-ZoneListChanged: 以测量值为基准，把计算的pattern叠加到SAED上
+ZoneListChanged: to response when zone list is changed
 *************************************************************************/
 void ZoneListChanged(object self, taggroup tg)
 {
-TagGroup TgList2= self.LookUpElement("hklList2")  //找list2
-number no=	TgList2.dlggetvalue() //选了哪个，在list2缓存中找到它
+TagGroup TgList2= self.LookUpElement("hklList2") 
+number no=	TgList2.dlggetvalue() 
 
 TagGroup sizefield= self.LookUpElement("sizefield")  //spot size
 number spotsize=sizefield.dlggetvalue()
@@ -7072,11 +6430,11 @@ Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+deltad2
 Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+deltad2+":l1",l1)
 Getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:List2:"+deltad2+":delta d1",deltad1)
 
-//清除图片上的标记
+//Clear marks
 image img:=GetFrontImage()
 ImageDisplay imgdisp=img.ImageGetImageDisplay(0)
 
-number annots=imgdisp.componentcountchildrenoftype(6) //删除已添加的点
+number annots=imgdisp.componentcountchildrenoftype(6)
 for (number i=0; i<annots; i++)
 {
 component annotid=imgdisp.componentgetnthchildoftype(6,0)
@@ -7094,7 +6452,7 @@ number xsize,ysize
 number xscale=img.imagegetdimensionscale(0)
 img.getsize(xsize,ysize)
 
-number x1,y1,x2,y2,x3,y3,x1_r,y1_r//(x1,y1)为第一点，(x2,y2)中间点，(x1_r,y1_r)为第一个校正点
+number x1,y1,x2,y2,x3,y3,x1_r,y1_r
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:X",x1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot1:Y",y1)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:X",x2)
@@ -7102,7 +6460,7 @@ Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot2:Y",y2)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:X",x3)
 Getnumbernote(img,"ElectronDiffraction Tools:Spot coordinates:Spot3:Y",y3)
 
-//测量点(x1,y1)作为第一个点
+//the first measured spot
 Component spot1=newovalannotation(y1-spotsize, x1-spotsize, y1+spotsize, x1+spotsize)
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
@@ -7116,18 +6474,16 @@ textannot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 textannot1.componentsetfontfacename(fonttype) 
 imgdisp.componentaddchildatend(textannot1)
 
-
-//用第一个点和theta校正第三个点
+//the corrected spots
 number ratio=d2/d1
 number r1_cal=sqrt((x1-x2)**2+(y1-y2)**2)
 number d1_cal=10/(r1_cal*xscale)
 number r3_cal=10/(d1_cal*ratio*xscale)
-angle=(180-angle)*pi()/180 //角度转换
+angle=(180-angle)*pi()/180
 
 number x3_r=(r3_cal/r1_cal)*(((x1-x2)*cos(angle)-(y1-y2)*sin(angle)))+x2
 number y3_r=(r3_cal/r1_cal)*(((x1-x2)*sin(angle)+(y1-y2)*cos(angle)))+y2
 
-//如果是180°点，则反过来
 if(sqrt((x3_r-x3)**2+(y3_r-y3)**2)>sqrt((x3-x2)**2+(y3-y2)**2))
 {
 x3_r=2*x2-x3_r
@@ -7138,37 +6494,31 @@ spot1=newovalannotation(y3_r-spotsize, x3_r-spotsize, y3_r+spotsize, x3_r+spotsi
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
-//imgdisp.componentaddchildatend(spot1)
 
 fonttype="Microsoft Sans Serif"
 textannot1=newtextannotation(x3, y3, ""+h2+","+k2+","+l2, 2*spotsize)
 textannot1.componentsetdrawingmode(2)
 textannot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 textannot1.componentsetfontfacename(fonttype) 
-//imgdisp.componentaddchildatend(textannot1)
 
-
-//开始衍射点扩展
 number xij,yij, h3,k3,l3
 for(number i=-10;i<=10;i++)
 {
 for(number j=-10;j<10;j++)
 {
-if(i==0&&j==0)continue //不考虑中心点
+if(i==0&&j==0)continue //skip for 00
 
 xij=i*(x1-x2)+x2+j*(x3_r-x2)
 yij=i*(y1-y2)+y2+j*(y3_r-y2)
 
 if(xij>0&&xij<xsize&&yij>0&&yij<ysize)
 {
-//显示标记
 spot1=newovalannotation(yij-spotsize, xij-spotsize, yij+spotsize, xij+spotsize)
 spot1.componentsetfillmode(1)
 spot1.componentsetdrawingmode(2)
 spot1.componentsetforegroundcolor(Rvalue,Gvalue,B1value)
 imgdisp.componentaddchildatend(spot1)
 
-//显示hkl
 h3=i*h1+j*h2
 k3=i*k1+j*k2
 l3=i*l1+j*l2
@@ -7185,21 +6535,20 @@ imgdisp.componentaddchildatend(textannot1)
 }
 }
 
+//Function: to response when d-spacing is changed in d-hkl sub-pannel
 void dspacingfieldChanged(object self, taggroup tg)
 {
 	number crystalvalue, alpha, beta, gamma, a, b, c, crysttabs, h, k, l, dspacing,no=1
 	number maxhklval, mindval
 	string crystalname
 
-	//清除缓存中的临时文件、已有d-值表
-	//删除临时缓存	
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:dspacing")		
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:List1", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List1")	
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Temp", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Temp")
 	
-	// 从输入框获取晶体信息
+	// read lattice parameters
 	self.dlggetvalue("crystalradios",crystalvalue)
 	self.dlggetvalue("alphafield",alpha)
 	self.dlggetvalue("betafield",beta)
@@ -7208,38 +6557,33 @@ void dspacingfieldChanged(object self, taggroup tg)
 	self.dlggetvalue("bfield",b)
 	self.dlggetvalue("cfield",c)
 	
-	//从缓存中读取hkl和d的极值
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:maxhkl",maxhklval)
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:mind",mindval)
 
-		// 角度换算
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 		
-		//删除缓存
 		taggroup mcptags
 	    ptags=getpersistenttaggroup()
 
-		// 晶体学数据不能为负值
 		if(a<=0 || b<=0 || c<=0 || alpha<=0 || beta<=0 || gamma<=0 )
 			{
 				beep()
 				exit(0)
 			}
 
-	// 开始计算d-值表
+	// begin to calculate d-spacing table
 	for(h=maxhklval; h>=-maxhklval; h--)
 	{
 		for(k=maxhklval; k>=-maxhklval; k--)
 		{
 			for(l=maxhklval; l>=-maxhklval; l--)
 				{
-				//hkl皆为0
+				//skip for 000
 					if(h**2+k**2+l**2==0) continue
 
-					// 按晶系来计算
-					if(crystalvalue==1) // 立方晶系
+					if(crystalvalue==1) // Cubic
 					{
 						dspacing=sqrt(a**2/(h**2+k**2+l**2))
 						crystalname="Cubic"
@@ -7252,7 +6596,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 					
 					}
 
-					if(crystalvalue==2) // 四方晶系
+					if(crystalvalue==2) // Tetragonal
 					{
 						number temp=((1/a**2)*(h**2+k**2))+((1/c**2)*l**2)
 						dspacing=sqrt(1/temp)
@@ -7265,7 +6609,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==3) //正交晶系
+					if(crystalvalue==3) //Orthorhombic
 					{
 						number temp=(((1/a**2)*h**2)+((1/b**2)*k**2)+((1/c**2)*l**2))
 						dspacing=sqrt(1/temp)
@@ -7278,7 +6622,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 	
-					if(crystalvalue==4) //六角晶系
+					if(crystalvalue==4) //Hexagonal
 					{
 
 						number temp=((4/(3*a**2))*(h**2+(h*k)+k**2)+((1/c**2)*l**2))
@@ -7292,7 +6636,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==5) //菱方晶系
+					if(crystalvalue==5) //Rhombohedral
 					{
 						number temp1=((h**2+k**2+l**2)*sin(alpha)**2)+(2*((h*k)+(k*l)+(h*l))*(cos(alpha)**2-cos(alpha)))
 						number temp2=a**2*(1-(3*cos(alpha)**2)+(2*cos(alpha)**3))
@@ -7307,7 +6651,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}	
 
-					if(crystalvalue==6) //单斜晶系
+					if(crystalvalue==6) //Monoclinic
 					{
 						number temp=((1/a**2)*(h**2/sin(beta)**2))+((1/b**2)*k**2)+((1/c**2)*(l**2/sin(beta)**2))-((2*h*l*cos(beta))/(a*c*sin(beta)**2))
 						dspacing=sqrt(1/temp)
@@ -7320,7 +6664,7 @@ void dspacingfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==7) //三斜晶系
+					if(crystalvalue==7) //Triclinic
 					{
 						number V2=a**2*b**2*c**2*(1-cos(alpha)**2-cos(beta)**2-cos(gamma)**2+(2*cos(alpha)*cos(beta)*cos(gamma)))
 						number s11=b**2*c**2*sin(alpha)**2
@@ -7346,14 +6690,13 @@ void dspacingfieldChanged(object self, taggroup tg)
 		}
 	}
 
-	// ********* d-值表结束，接下来在误差范围内找hkl晶面**************
-	 number d_exp=tg.dlggetvalue() //获取输入的d值
+	// ********* find hkl indices with the given error**************
+	 number d_exp=tg.dlggetvalue() 
 
 	 taggroup ed
 	 ed=self.LookUpElement("errorfield")
-	 number Error_d=ed.dlggetvalue() //d值误差
+	 number Error_d=ed.dlggetvalue() 
 
-//d值寻找范围
 number maxd=d_exp+Error_d
 number mind=d_exp-Error_d
 
@@ -7367,11 +6710,10 @@ for(number i=1; i<peakno+1; i++)
 		  string mcplabel = dspacingtags.TagGroupGetTaglabel( i-1 )
 		  
 		  d=val(mcplabel)		  
-		  number delta_d=abs(d_exp-d )   //实验值与理论值的差异
+		  number delta_d=abs(d_exp-d )   
 		  		  
 		   if(d<maxd && d>mind)
                 {
-				//读取每个d下的第一个hkl
 				 taggroup peaktags,peaks
 				 peaktags=getpersistenttaggroup()
 				 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d, peaks)
@@ -7392,7 +6734,7 @@ for(number i=1; i<peakno+1; i++)
 				}
 		}
 
-//d值误差从小到大输出
+//order and output it
 result("-----------------------------------------------------------------------------\n")
 
 	 taggroup peaktags,peaks
@@ -7416,23 +6758,21 @@ result("------------------------------------------------------------------------
 	 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Temp")	
 }
 
-
-
+//Function: to response when error is changed in d-hkl sub-pannel
 void errorfieldChanged(object self, taggroup tg)
 {
 	number crystalvalue, alpha, beta, gamma, a, b, c, crysttabs, h, k, l, dspacing,no=1
 	number maxhklval, mindval
 	string crystalname
 
-	//清除缓存中的临时文件、已有d-值表
-	//删除临时缓存	
+	//clear tags
 	taggroup dspacingtags
     taggroup ptags=getpersistenttaggroup()
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:dspacing")		
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:List1", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:List1")	
 	if(ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Temp", dspacingtags)) deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Temp")
 	
-	// 从输入框获取晶体信息
+	// read lattice parameters of the selected crystal
 	self.dlggetvalue("crystalradios",crystalvalue)
 	self.dlggetvalue("alphafield",alpha)
 	self.dlggetvalue("betafield",beta)
@@ -7441,38 +6781,33 @@ void errorfieldChanged(object self, taggroup tg)
 	self.dlggetvalue("bfield",b)
 	self.dlggetvalue("cfield",c)
 	
-	//从缓存中读取hkl和d的极值
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:maxhkl",maxhklval)
 		getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:mind",mindval)
 
-		// 角度换算
 		alpha=alpha/(180/pi())
 		beta=beta/(180/pi())
 		gamma=gamma/(180/pi())
 		
-		//删除缓存
 		taggroup mcptags
 	    ptags=getpersistenttaggroup()
 
-		// 晶体学数据不能为负值
 		if(a<=0 || b<=0 || c<=0 || alpha<=0 || beta<=0 || gamma<=0 )
 			{
 				beep()
 				exit(0)
 			}
 
-	// 开始计算d-值表
+	// begin to calculate d-spacings
 	for(h=maxhklval; h>=-maxhklval; h--)
 	{
 		for(k=maxhklval; k>=-maxhklval; k--)
 		{
 			for(l=maxhklval; l>=-maxhklval; l--)
 				{
-				//hkl皆为0
+				//skip for 00
 					if(h**2+k**2+l**2==0) continue
 
-					// 按晶系来计算
-					if(crystalvalue==1) // 立方晶系
+					if(crystalvalue==1) // Cubic
 					{
 						dspacing=sqrt(a**2/(h**2+k**2+l**2))
 						crystalname="Cubic"
@@ -7482,10 +6817,9 @@ void errorfieldChanged(object self, taggroup tg)
 						setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:dspacing:"+dspacing+":"+no+":l",l)
 
 						no=no+1
-					
 					}
 
-					if(crystalvalue==2) // 四方晶系
+					if(crystalvalue==2) // Tetragonal
 					{
 						number temp=((1/a**2)*(h**2+k**2))+((1/c**2)*l**2)
 						dspacing=sqrt(1/temp)
@@ -7498,7 +6832,7 @@ void errorfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==3) //正交晶系
+					if(crystalvalue==3) //Orthorhombic
 					{
 						number temp=(((1/a**2)*h**2)+((1/b**2)*k**2)+((1/c**2)*l**2))
 						dspacing=sqrt(1/temp)
@@ -7511,7 +6845,7 @@ void errorfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 	
-					if(crystalvalue==4) //六角晶系
+					if(crystalvalue==4) //Hexagonal
 					{
 
 						number temp=((4/(3*a**2))*(h**2+(h*k)+k**2)+((1/c**2)*l**2))
@@ -7525,7 +6859,7 @@ void errorfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==5) //菱方晶系
+					if(crystalvalue==5) //Rhombohedral
 					{
 						number temp1=((h**2+k**2+l**2)*sin(alpha)**2)+(2*((h*k)+(k*l)+(h*l))*(cos(alpha)**2-cos(alpha)))
 						number temp2=a**2*(1-(3*cos(alpha)**2)+(2*cos(alpha)**3))
@@ -7540,7 +6874,7 @@ void errorfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}	
 
-					if(crystalvalue==6) //单斜晶系
+					if(crystalvalue==6) //Monoclinic
 					{
 						number temp=((1/a**2)*(h**2/sin(beta)**2))+((1/b**2)*k**2)+((1/c**2)*(l**2/sin(beta)**2))-((2*h*l*cos(beta))/(a*c*sin(beta)**2))
 						dspacing=sqrt(1/temp)
@@ -7553,7 +6887,7 @@ void errorfieldChanged(object self, taggroup tg)
 						no=no+1						
 					}
 
-					if(crystalvalue==7) //三斜晶系
+					if(crystalvalue==7) //Triclinic
 					{
 						number V2=a**2*b**2*c**2*(1-cos(alpha)**2-cos(beta)**2-cos(gamma)**2+(2*cos(alpha)*cos(beta)*cos(gamma)))
 						number s11=b**2*c**2*sin(alpha)**2
@@ -7579,14 +6913,13 @@ void errorfieldChanged(object self, taggroup tg)
 		}
 	}
 
-	// ********* d-值表结束，接下来在误差范围内找hkl晶面**************
-	 number Error_d=tg.dlggetvalue() //获取输入的d值
+	// *********search hkl planes within the given d-error**************
+	 number Error_d=tg.dlggetvalue() 
 
 	 taggroup dfield
 	 dfield=self.LookUpElement("dspacingfield")
-	 number d_exp=dfield.dlggetvalue() //d值误差
+	 number d_exp=dfield.dlggetvalue() 
 
-//d值寻找范围
 number maxd=d_exp+Error_d
 number mind=d_exp-Error_d
 
@@ -7600,11 +6933,10 @@ for(number i=1; i<peakno+1; i++)
 		  string mcplabel = dspacingtags.TagGroupGetTaglabel( i-1 )
 		  
 		  d=val(mcplabel)		  
-		  number delta_d=abs(d_exp-d )   //实验值与理论值的差异
+		  number delta_d=abs(d_exp-d )  
 		  		  
 		   if(d<maxd && d>mind)
                 {
-				//读取每个d下的第一个hkl
 				 taggroup peaktags,peaks
 				 peaktags=getpersistenttaggroup()
 				 peaktags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:dspacing:"+d, peaks)
@@ -7625,7 +6957,7 @@ for(number i=1; i<peakno+1; i++)
 				}
 		}
 
-//d值误差从小到大输出
+//order and output them
 result("-----------------------------------------------------------------------------\n")
 	 taggroup peaktags,peaks
 	 peaktags=getpersistenttaggroup()
@@ -7648,7 +6980,7 @@ result("------------------------------------------------------------------------
 	 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Temp")	
 }
 
-//peak button in lattice pannel
+//peak button in lattice sub-pannel: to measure d-spacing of the selected peak
 void PeakButton(object self)
 {
 image img:=getfrontimage()
@@ -7666,7 +6998,7 @@ currentROI.roigetrange(l,r)
 
 xscale=img.ImageGetDimensionScale(0)
 
-if(unit=="s (1/nm)")
+if(unit=="s (1/nm)"||unit=="1/nm")
 {
 d=10/(0.5*(l+r)*xscale )
 }
@@ -7686,7 +7018,7 @@ self.lookupElement("dfield").dlgvalue(d)
 }
 }
 
-//Spot button
+//Spot button in lattice sub-pannel: to measure the d-spacing of the selected spots
 void SpotButton(object self)
 {
 Result("-----------------------------------------------------------------------------------------\nSpace bar: to get d-spacing of the selected spot\nALT+: to get d-spacing of the selected spot by ROI \n-----------------------------------------------------------------------------------------\n")	
@@ -7742,12 +7074,14 @@ string unit
 unit=frontimage.ImageGetDimensionUnitString(0)
 
 number k=1,m=1,noclick=1
+
+number radius=xsize/150
+if(radius<=1)radius=1
+
 while(2>m)
 {
 number keypress=getkey()
-		
-if(keypress==32) // space bar 得到三点的初值
-{
+
  //find the coordinator of the spot
  number xsize, ysize,xscale,yscale,x, y,x0,y0
  getwindowsize(frontimage, xsize, ysize)
@@ -7787,19 +7121,39 @@ number annotationID
 
 		x1=mouse_img_x
 		y1=mouse_img_y
+
+frontimage.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)		
 		
+if(keypress==32) // space bar to mark spot
+{
 SetNumberNote(frontimage,"ElectronDiffraction Tools:Live profile:Spot"+noclick+":X", x1 )
 SetNumberNote(frontimage,"ElectronDiffraction Tools:Live profile:Spot"+noclick+":Y", y1 )
 
 noclick=noclick+1
 }		
-if(keypress>0 && keypress!=32||noclick==2) // Any key except space pressed - cancel
+
+if(keypress==29||keypress==30) //right and up key
+{
+radius=radius+0.2*radius
+frontimage.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
+}
+
+if(keypress==28||keypress==31) //left and down key
+{
+radius=radius-0.2*radius
+
+if(radius<1)radius=1
+
+frontimage.SetSelection(y1-radius,x1-radius,y1+radius,x1+radius)
+}
+
+if(keypress>0 && keypress!=32&& keypress!=28&& keypress!=29&& keypress!=30&& keypress!=31||noclick==2) // Any key except space pressed - cancel
 {
 m=2
 }
 }
 
-//读取初值，分别优化
+//and then refine it
 frontimage.GetSize(xsize,ysize)
 number hatwidth=12, brimwidth=6, hatthreshold=0.005,dataselected=0,peakchannel,width=xsize/20,t,l,b,r,xx,yy
 
@@ -7808,28 +7162,25 @@ for(number i=1;i<2;i++)
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Live profile:Spot"+i+":X", x1 )
 GetNumberNote(frontimage,"ElectronDiffraction Tools:Live profile:Spot"+i+":Y", y1 )
 
-//投影
 image projectionx = RealImage("", 4, 2*width, 1)
 image projectiony = RealImage("", 4, 2*width, 1)
 
-projectionx[icol, 0] += medianfilter(frontimage[y1-width,x1-width,y1+width,x1+width],3,0) //-----xprofile拟合
+projectionx[icol, 0] += medianfilter(frontimage[y1-width,x1-width,y1+width,x1+width],3,0) 
 projectionx=projectionx-projectionx.min()
 
 image mirrorx=projectionx*0
-mirrorx=projectionx[iwidth-icol,irow] //x的镜像
+mirrorx=projectionx[iwidth-icol,irow] 
 
-number maxx,maxy  //得到profile中部峰的峰位和fwhm
+number maxx,maxy  
 number maxval=projectionx[0,width-0.2*width,1,width+0.2*width].max(maxx,maxy)
 maxx=width-0.2*width+maxx
 FWHMcalc(projectionx, maxx)
 projectionx.GetSelection(t,l,b,r)
 
-//寻峰
 tophatfilter(projectionx, brimwidth, hatwidth, hatthreshold, dataselected)
 getpersistentnumbernote("ElectronDiffraction Tools:maxpeak:Peak1:X",x)
 x=x1-width+x
 
-//对x的镜像寻峰
 maxval=mirrorx[0,width-0.2*width,1,width+0.2*width].max(maxx,maxy)
 maxx=width-0.2*width+maxx
 FWHMcalc(mirrorx, maxx)
@@ -7840,24 +7191,21 @@ getpersistentnumbernote("ElectronDiffraction Tools:maxpeak:Peak1:X",xx)
 xx=x1-width+(2*width-xx)
 x=0.5*(x+xx)
 
-//------------对yprojection进行拟合
 projectiony[irow, 0] += medianfilter(frontimage[y1-width,x1-width,y1+width,x1+width],3,0)
 projectiony=projectiony-projectiony.min()
 
 image mirrory=projectiony*0
-mirrory=projectiony[iwidth-icol,irow] //y的镜像
+mirrory=projectiony[iwidth-icol,irow] 
 
 maxval=projectiony[0,width-0.2*width,1,width+0.2*width].max(maxx,maxy)
 maxx=width-0.2*width+maxx
 FWHMcalc(projectiony, maxx)
 projectiony.GetSelection(t,l,b,r)
 
-//寻峰
 tophatfilter(projectiony, brimwidth, hatwidth, hatthreshold, dataselected)
 getpersistentnumbernote("ElectronDiffraction Tools:maxpeak:Peak1:X",y)
 y=y1-width+y
 
-//对y的镜像寻峰
 maxval=mirrory[0,width-0.2*width,1,width+0.2*width].max(maxx,maxy)
 maxx=width-0.2*width+maxx
 FWHMcalc(mirrory, maxx)
@@ -7902,7 +7250,7 @@ self.lookupElement("dfield").dlgvalue(d)
 }
 }
 
-//Find lattice button
+//Find lattice button in lattice sub-pannel
 void FindLatticeButton(object self)
 {
 
@@ -7910,49 +7258,42 @@ void FindLatticeButton(object self)
 }
 
 
-//dfield changed
+//dfield changed in lattice sub-pannel
 void dfieldChanged(object self, taggroup tg)
 {
 
 }
 
-//lattice field changed
+//lattice field changed in lattice sub-pannel
 void Latticehfieldchanged(object self, taggroup tg)
 {
 
 }
 
 
-//功能：自动更新对话框中的信息
-void updatevalues( object self )  
-{
-
-}
-
-//Indices转换的4个计算按钮
+//function: [uvw]>> button in Indices sub-pannel
 void RunButton1( object self ) 
 {
 TagGroup tag=self.LookUpElement("Indfield1") 
 string thisline=tag.dlggetstringvalue()
 
-//在行内识别读取tab，为方便排序，除以100
+//pick out u,v,w
 number width=len(thisline)
 for(number i=0;i<width;i++)
 {
 string thischar=mid(thisline,i,1)
 
 number Bytes,notab=1
-if(thischar==",")  //找tab
+if(thischar==",")  
 {
 Bytes=len(left(thisline,i))/100
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs:"+Bytes,Bytes)
 }
 }
 
-//把逗号的bytes从小到大排序，排完后删除临时缓存	
 	taggroup abtags,mcptags
 	taggroup ptags=getpersistenttaggroup()
-	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) //tab的位置
+	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags)
 	
 	number mcpno=mcptags.taggroupcounttags()
 	for(number i=1; i<mcpno+1; i++)
@@ -7964,7 +7305,6 @@ setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp
 		
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp")
 
-//读取缓存中的数据作为初始值
 number Tab1,tab2,tab3,u,v,w,t
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 1",Tab1) 
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 2",Tab2)  
@@ -7974,7 +7314,7 @@ v=val(mid(thisline,tab1+1,tab2-tab1-1))
 w=val(right(thisline,width-tab2-1))
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files")
 
-//开始转换
+//convert three indices to four indices
 number u1,v1,t1,w1
 u1=(2*u-v)/3
 v1=(2*v-u)/3
@@ -7983,16 +7323,16 @@ w1=w
 
 image img=RealImage("",4,1,4)
 if(abs(u1)>0)img.SetPixel(0,0,abs(u1))
-else img.SetPixel(0,0,1e10)
+else img.SetPixel(0,0,1e6)
 
 if(abs(v1)>0)img.SetPixel(0,1,abs(v1))
-else img.SetPixel(0,1,1e10)
+else img.SetPixel(0,1,1e6)
 
 if(abs(t1)>0)img.SetPixel(0,2,abs(t1))
-else img.SetPixel(0,2,1e10)
+else img.SetPixel(0,2,1e6)
 
 if(abs(w1)>0)img.SetPixel(0,3,abs(u1))
-else img.SetPixel(0,3,1e10)
+else img.SetPixel(0,3,1e6)
 
 number minval=img.min()
 u1=u1/minval
@@ -8003,29 +7343,29 @@ w1=w1/minval
 Result("\n[ "+u+", "+v+", "+w +"] ==> [ "+u1+", "+v1+", "+t1+", "+w1+" ]\n")
 }
 
+//function: (hkl)>> button in Indices sub-pannel
 void RunButton2( object self ) 
 {
 TagGroup tag=self.LookUpElement("Indfield2") 
 string thisline=tag.dlggetstringvalue()
 
-//在行内识别读取tab，为方便排序，除以100
+//pick out hkl
 number width=len(thisline)
 for(number i=0;i<width;i++)
 {
 string thischar=mid(thisline,i,1)
 
 number Bytes,notab=1
-if(thischar==",")  //找tab
+if(thischar==",") 
 {
 Bytes=len(left(thisline,i))/100
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs:"+Bytes,Bytes)
 }
 }
 
-//把逗号的bytes从小到大排序，排完后删除临时缓存	
 	taggroup abtags,mcptags
 	taggroup ptags=getpersistenttaggroup()
-	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) //tab的位置
+	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) 
 	
 	number mcpno=mcptags.taggroupcounttags()
 	for(number i=1; i<mcpno+1; i++)
@@ -8037,7 +7377,6 @@ setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp
 		
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp")
 
-//读取缓存中的数据作为初始值
 number Tab1,tab2,tab3,u,v,w,t
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 1",Tab1) 
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 2",Tab2)  
@@ -8047,7 +7386,7 @@ v=val(mid(thisline,tab1+1,tab2-tab1-1))
 w=val(right(thisline,width-tab2-1))
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files")
 
-//开始转换
+//convert hkl to hkil
 number u1,v1,t1,w1
 u1=u
 v1=v
@@ -8057,29 +7396,29 @@ w1=w
 Result("\n( "+u+", "+v+", "+w +") ==> ( "+u1+", "+v1+", "+t1+", "+w1+" )\n")
 }
 
+//function: [uvtw]>> button in Indices sub-pannel
 void RunButton3( object self ) 
 {
 TagGroup tag=self.LookUpElement("Indfield3") 
 string thisline=tag.dlggetstringvalue()
 
-//在行内识别读取tab，为方便排序，除以100
+//pick out uvtw
 number width=len(thisline)
 for(number i=0;i<width;i++)
 {
 string thischar=mid(thisline,i,1)
 
 number Bytes,notab=1
-if(thischar==",")  //找tab
+if(thischar==",")  
 {
 Bytes=len(left(thisline,i))/100
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs:"+Bytes,Bytes)
 }
 }
 
-//把逗号的bytes从小到大排序，排完后删除临时缓存	
 	taggroup abtags,mcptags
 	taggroup ptags=getpersistenttaggroup()
-	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) //tab的位置
+	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) 
 	
 	number mcpno=mcptags.taggroupcounttags()
 	for(number i=1; i<mcpno+1; i++)
@@ -8091,7 +7430,6 @@ setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp
 		
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp")
 
-//读取缓存中的数据作为初始值
 number Tab1,tab2,tab3,u,v,w,t
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 1",Tab1) 
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 2",Tab2)  
@@ -8103,7 +7441,7 @@ t=val(mid(thisline,tab2+1,tab3-tab1-1))
 w=val(right(thisline,width-tab3-1))
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files")
 
-//开始转换
+//conver uvtw to uvw
 number u1,v1,w1
 u1=2*u+v
 v1=2*v+u
@@ -8112,30 +7450,29 @@ w1=w
 Result("\n[ "+u+", "+v+", "+t+", "+w +"] ==> [ "+u1+", "+v1+", "+w1+" ]\n")
 }
 
-
+//function: [uvtw]>> button in Indices sub-pannel
 void RunButton4( object self ) 
 {
 TagGroup tag=self.LookUpElement("Indfield4") 
 string thisline=tag.dlggetstringvalue()
-Result("\n"+thisline+" \n")
-//在行内识别读取tab，为方便排序，除以100
+
+//pick out hkil
 number width=len(thisline)
 for(number i=0;i<width;i++)
 {
 string thischar=mid(thisline,i,1)
 
 number Bytes,notab=1
-if(thischar==",")  //找tab
+if(thischar==",")  
 {
 Bytes=len(left(thisline,i))/100
 setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs:"+Bytes,Bytes)
 }
 }
 
-//把逗号的bytes从小到大排序，排完后删除临时缓存	
 	taggroup abtags,mcptags
 	taggroup ptags=getpersistenttaggroup()
-	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags) //tab的位置
+	ptags.taggroupgettagastaggroup("ElectronDiffraction Tools:Crystal Tools:Read Files:temp:Tabs", mcptags)
 	
 	number mcpno=mcptags.taggroupcounttags()
 	for(number i=1; i<mcpno+1; i++)
@@ -8147,7 +7484,6 @@ setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp
 		
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files:temp")
 
-//读取缓存中的数据作为初始值
 number Tab1,tab2,tab3,u,v,w,t
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 1",Tab1) 
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Read Files:PDF file:Tabs:Tab 2",Tab2)  
@@ -8159,7 +7495,7 @@ t=val(mid(thisline,tab2+1,tab3-tab1-1))
 w=val(right(thisline,width-tab3-1))
 deletepersistentnote("ElectronDiffraction Tools:Crystal Tools:Read Files")
 
-//开始转换
+//hkil convert to hkl
 number u1,v1,w1
 u1=u
 v1=v
@@ -8168,29 +7504,27 @@ w1=w
 Result("\n( "+u+", "+v+", "+t+", "+w +") ==> ( "+u1+", "+v1+", "+w1+" )\n")
 }
 
-// -------------------------定义各面板之间切换动作---------------------
+
 	Void Action(Object self) 
 		{
 		TagGroup tg = self.LookUpElement("TabList")
-//		Result("\nAction! Change from tab #" + tg.DLGGetValue()+" to tab #1")
-//		tg.DLGValue(1)
 		}
+		
 	Void TabChangeAction(Object self, TagGroup TabListSelf)
 		{
-	//	Result("\nTab changed to tab#"+TabListSelf.DLGGetValue())
 		}
 		
 
-//---------------------------------新建Crystal tools面板-------------------------------		
+//---------------------------------Create crystal tools GUI-------------------------------		
 TagGroup CreateCrystalTools(Object self)
 	{
 	TagGroup CrystalTools = DLGCreateTab("Crystal Tools")
 		
-//----------------- 新建 "Create Lattice box" -------------------------
+//----------------- create "Create Lattice box" -------------------------
 	TagGroup CreateLatticeBoxs, CreateLattice
 	CreateLatticeBoxs = DLGCreateBox("Lattice",CreateLattice).dlgexternalpadding(2,0).dlginternalpadding(2,0)
 
-//新建crystal、选择框、+、Name、输入框	
+//create crystal, pull-down lsit, +, Name...
 	TagGroup CrystalLable=DLGCreateLabel("Crystal:").dlganchor("West").dlgexternalpadding(0,0)	
 	TagGroup CNPopUp=MakeElementPullDown()
 	CNPopUp.dlgidentifier("elementpulldown").dlgchangedmethod("elementchanged").dlgexternalpadding(0,0)
@@ -8203,18 +7537,16 @@ TagGroup CreateCrystalTools(Object self)
 	
 	TagGroup Crystalname=DLGGroupItems(CrystalLable,CNPopUp,CNadd,CN).DLGtablelayout(4,1,0)
 
-//新建 Crystal Type
+//create Crystal Type radio list
 	TagGroup CTLable=DLGCreateLabel("    Type:")
-	Taggroup crystalradios=MakeCrystTypeRadios()  //调用函数生成列表
+	Taggroup crystalradios=MakeCrystTypeRadios()  
 	crystalradios.dlgidentifier("crystalradios").dlgchangedmethod("crystalchanged")
 	
 	TagGroup CrystalType=DLGGroupItems(CTLable,crystalradios).DLGtablelayout(2,1,0)
-	
-	//把crystal name+crystal type打包
 	TagGroup CrystalNT=DLGGroupItems(CrystalName,CrystalType).DLGtablelayout(1,2,0)
 	
-//新建unit cell
-	TagGroup Unitcell=DLGCreateLabel("Unit cell: ").dlganchor("West")
+//create unit cell box
+	TagGroup Unitcell=DLGCreateLabel("Unit cell ").dlganchor("West")
 	
 	TagGroup alabel=DLGCreateLabel("a= ")
 	TagGroup afield = DLGCreateRealField(0, 13,7).dlgidentifier("afield").dlgchangedmethod("latticechanged")
@@ -8223,7 +7555,6 @@ TagGroup CreateCrystalTools(Object self)
     taggroup alphalabel=dlgcreatelabel("α=")
     TagGroup alphafield= DLGCreateRealField(0, 13, 0).dlgidentifier("alphafield").dlgchangedmethod("alphachanged")
     taggroup alphagroup=dlggroupitems(alphalabel, alphafield).dlgtablelayout(2,1,0)	
-	//两者打包
 	taggroup a_alphagroup=dlggroupitems(agroup, alphagroup).dlgtablelayout(1,2,0)
 	
 	TagGroup blabel=DLGCreateLabel("b= ")
@@ -8233,7 +7564,6 @@ TagGroup CreateCrystalTools(Object self)
 	taggroup betalabel=dlgcreatelabel("β=")
     TagGroup betafield = DLGCreateRealField(0, 13, 0).dlgidentifier("betafield")
     taggroup betagroup=dlggroupitems(betalabel, betafield).dlgtablelayout(2,1,0)
-	//两者打包
 	taggroup b_betagroup=dlggroupitems(bgroup, betagroup).dlgtablelayout(1,2,0)
 	
 	TagGroup clabel=DLGCreateLabel("c= ")
@@ -8243,32 +7573,26 @@ TagGroup CreateCrystalTools(Object self)
 	taggroup gammalabel=dlgcreatelabel("γ=")
     TagGroup gammafield = DLGCreateRealField(0, 13, 0).dlgidentifier("gammafield")
     taggroup gammagroup=dlggroupitems(gammalabel, gammafield).dlgtablelayout(2,1,0)
-	//两者打包
 	taggroup c_gammagroup=dlggroupitems(cgroup, gammagroup).dlgtablelayout(1,2,0)
 	
-	//把以上三者打包
 	taggroup unitsizegroup=dlggroupitems(a_alphagroup,b_betagroup,c_gammagroup).dlgtablelayout(3,1,0)
-
-	//再和unitcell 打包
 	taggroup unitcellgroup=dlggroupitems(unitcell,unitsizegroup).dlgtablelayout(1,2,0)
-	
-	//再和NT打包添加到latticebox 中
 	taggroup latticegroup=dlggroupitems(CrystalNT,unitcellgroup).dlgtablelayout(1,2,0).dlganchor("West")
 	
 	CreateLatticeBoxs.DLGAddElement(latticegroup)
 	
-//----------------------------以下生成Indexing界面----------------------------
+//----------------------------create indexing box----------------------------
 	TagGroup CreateIndexingBoxs, IndexingItems
 	CreateIndexingBoxs = DLGCreateBox("Indexing",IndexingItems).dlgexternalpadding(2,0 ).dlginternalpadding(2,0)
 
-	//1) 盛放o-O-o和calc按钮
+	//1) create o-O-o and calc buttons
 	TagGroup CalcBoxs, CalcItems
 	CalcBoxs = DLGCreateBox("",CalcItems).dlgexternalpadding(0,5).dlginternalpadding(0,2)
 
 	CalcItems.DLGAddElement(DLGCreatePushButton("o-O-o","d_angle").dlginternalpadding(0,0).dlgexternalpadding(4,3))	
 	CalcItems.DLGAddElement(DLGCreatePushButton("Calc.","Calcbutton").dlginternalpadding(0,0).dlgexternalpadding(4,3))	
 
-	number spotsize //spot size 设置框
+	number spotsize //set spot size 
 	getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Spot size",spotsize)
 	
 	TagGroup sizelabel=DLGCreateLabel("Size:") 
@@ -8276,7 +7600,7 @@ TagGroup CreateCrystalTools(Object self)
 	Taggroup sizegroup=dlggroupitems(sizelabel, Sizefield).dlgtablelayout(2,1,0)
 	CalcItems.DLGAddElement(sizegroup)
 	
-	TagGroup RGBlabel=DLGCreateLabel("RGB:") //spot size 设置框
+	TagGroup RGBlabel=DLGCreateLabel("RGB:") //set RGB
 	TagGroup Rfield = DLGCreateRealField(0, 4,1).dlgidentifier("Rfield")
 	TagGroup Gfield = DLGCreateRealField(0.8, 4,1).dlgidentifier("Gfield")
 	TagGroup B1field = DLGCreateRealField(0, 4,1).dlgidentifier("B1field")
@@ -8285,7 +7609,7 @@ TagGroup CreateCrystalTools(Object self)
 	
 	CalcBoxs.DLGTableLayOut(4,1,0)
 
-	//2) 显示测量值d1、d2、angle
+	//2) display d1, d2 and angle
 	TagGroup d1label=DLGCreateLabel("d1= ")
 	Taggroup d1field=DLGCreateLabel( "" + format(0, "%6.4f") + "  A").DLGIdentifier("d1field").dlgexternalpadding(0,0)
     Taggroup d1group=dlggroupitems(d1label, d1field).dlgtablelayout(2,1,0).dlginternalpadding(2,0).dlgexternalpadding(2,2)
@@ -8298,10 +7622,9 @@ TagGroup CreateCrystalTools(Object self)
 	TagGroup  Anglefield=DLGCreateLabel( "" + format(0, "%6.2f") + "  deg.").DLGIdentifier("Anglefield").dlgexternalpadding(0,0)
     Taggroup  Anglegroup=dlggroupitems( Anglelabel,  Anglefield).dlgtablelayout(2,1,0).dlginternalpadding(2,0).dlgexternalpadding(2,2)
 	
-	//以上三者打包、添加到CreateAnalysisBoxs中
 	taggroup d_Anglegroup=dlggroupitems(d1group,d2group,Anglegroup).dlgtablelayout(3,1,0).dlganchor("West")	
 	
-	//3) (hkl)1,(hkl)2,[uvw]列表
+	//3) (hkl)1, (hkl)2, [uvw] lists
 	TagGroup hklLable1=DLGCreateLabel("(hkl)1")
 	TagGroup hkllist1,hkllistItems1
 	hkllist1=DLGCreatelist(20,5).DLGIdentifier("hklList1").dlgchangedmethod("hklList1Changed")
@@ -8319,11 +7642,10 @@ TagGroup CreateCrystalTools(Object self)
 	
 	TagGroup hklgroup=DLGGroupItems(hklgroup1,hklgroup2,hklgroup3).DLGtablelayout(3,1,0)
 	
-		//把以上2者组合并添加到box中
 	TagGroup Analysisgroup=DLGGroupItems(CalcBoxs,d_Anglegroup,hklgroup).DLGtablelayout(1,3,0)
 	CreateIndexingBoxs.DLGAddElement(Analysisgroup)
 
-//---------------以下用于生成Profile的界面-----------------------	
+//---------------Create profile box-----------------------	
 TagGroup CreateProfileBoxs,CreateProfile
 CreateProfileBoxs = DLGCreateBox("Profile",CreateProfile).dlgexternalpadding(2,2 ).dlginternalpadding(6,6)	
 
@@ -8336,11 +7658,11 @@ CreateProfile.DLGAddElement(DLGCreatePushButton("Save","SaveButton").dlginternal
 
 CreateProfileBoxs.DLGtablelayout(6,1,0)
 
-	//---------------以下用于生成Lattice Calculator的界面-----------------------
+	//---------------Create Lattice Calculator box-----------------------
 	TagGroup CreateCalculatorBoxs,CreateCalculator
 	CreateCalculatorBoxs = DLGCreateBox("Lattice Calculator",CreateCalculator).dlgexternalpadding(2,2 ).dlginternalpadding(2,0)	
 	
-	//生成四个子面板
+	//create sub-pannels
 	TagGroup cryst_items
 	TagGroup crysttablist = DLGCreateTabList(cryst_items, 0).DLGIdentifier("crysttabs").dlgchangedmethod("crysttabchanged")
 	crysttablist.dlgexternalpadding(0,0)
@@ -8353,8 +7675,7 @@ CreateProfileBoxs.DLGtablelayout(6,1,0)
 	cryst_items.DLGAddTab(DLGCreateTab(zonestab, "h <-> u") );
 	cryst_items.DLGAddTab(DLGCreateTab(LatticeTab, "Lattice") )
 	
-//---------------往d-spacing子面板中添加内容---------------
-//新建一个box，用于计算hkl晶面的d值
+//---------------1. d-hkl sub-pannel---------------
 taggroup dcalcbox_items
 taggroup dcalcbox=dlgcreatebox("",dcalcbox_items)
 	
@@ -8365,32 +7686,27 @@ TagGroup dkfield = DLGCreateRealField(0, 6,2).dlgidentifier("dkfield").dlgchange
 TagGroup dlfield = DLGCreateRealField(0, 6,2).dlgidentifier("dlfield")
 taggroup dhkilgroup=dlggroupitems(dhgroup, dkfield, dlfield).dlgtablelayout(3,1,0)
 
-//用于显示结果
 taggroup dspacinglabel=dlgcreatelabel("d:")
 taggroup dspacingfield=DLGCreateRealField(0, 9,4).DLGIdentifier("dspacingfield").dlgchangedmethod("dspacingfieldChanged")
 TagGroup errorfield=DLGCreateRealField(0.1, 5,2).DLGIdentifier("errorfield").dlgchangedmethod("errorfieldChanged")
 taggroup dspacinglabel2=dlgcreatelabel(" A")
 taggroup dspacinggroup=dlggroupitems(dspacinglabel, dspacingfield,errorfield,dspacinglabel2).dlgtablelayout(4,1,0).dlganchor("South")
 
-// 组合后添加到 d-spacings tab中
 taggroup dspacingtabgroup=dlggroupitems(dhkilgroup, dspacinggroup).dlgtablelayout(1,2,0).dlgexternalpadding(2,0)
 dcalcbox_items.dlgaddelement(dspacingtabgroup)
 
 dspacingstab.dlgaddelement(dcalcbox)
 
-// 生成calc和clear按钮，添加到dspacing面板中
 taggroup crystcalcbutton=dlgcreatepushbutton("Calc", "maincalcroutine")
 taggroup crystclearbutton=dlgcreatepushbutton("Clear", "crystclearbutton")
 taggroup crystbuttonsgroup=dlggroupitems( crystcalcbutton,crystclearbutton).dlgtablelayout(2,1,0)
 
 dspacingstab.dlgaddelement(crystbuttonsgroup)
 
-//---------------把Planes填入各子面板中 ---------------
-// 晶面夹角面板
+//---------------2. Planes sub-pannel ---------------
 taggroup anglesbox_items
 taggroup anglesbox=dlgcreatebox("", anglesbox_items)
 
-// 生成两个hkl输入框
 taggroup angh1label=dlgcreatelabel("( h k l )1  ")
 TagGroup angh1field = DLGCreateRealField(0, 5,2).dlgidentifier("angh1field").dlgchangedmethod("anghork1changed")
 taggroup angh1group=dlggroupitems(angh1label, angh1field).dlgtablelayout(2,1,0)
@@ -8407,7 +7723,6 @@ taggroup anghkil2group=dlggroupitems(angh2group, angk2field, angl2field).dlgtabl
 
 taggroup anghkil12group=dlggroupitems(anghkil1group, anghkil2group).dlgtablelayout(1,2,0)
 
-//显示夹角和带轴结果
 taggroup angleresultlabel=dlgcreatelabel("Angle:")
 taggroup angleresultfield=DLGCreateLabel( "" + format(0, "%6.1f") + " deg.").DLGIdentifier("angleresultfield")
 taggroup angleresultgroup1=dlggroupitems(angleresultlabel, angleresultfield).dlgtablelayout(2,1,0)
@@ -8416,18 +7731,16 @@ taggroup angleresultfield1=DLGCreateLabel( "                      " ).DLGIdentif
 taggroup angleresultgroup2=dlggroupitems(angleresultlabel1, angleresultfield1).dlgtablelayout(2,1,0).dlganchor("West")
 taggroup angleresultgroup=dlggroupitems(angleresultgroup1, angleresultgroup2).dlgtablelayout(1,2,0)
 
-// 把以上几个组合、添加到angle面板中
 taggroup anglefinalgroup=dlggroupitems(anghkil12group, angleresultgroup).dlgtablelayout(2,1,0)
 
 anglesbox_items.dlgaddelement(anglefinalgroup)
 anglestab.dlgaddelement(anglesbox)
 anglestab.dlgaddelement(crystbuttonsgroup)
 
-//--------------- 接下来是Directions列表   ---------------
+//--------------- 3. Directions sub-pannel  ---------------
 taggroup directionsbox_items
 taggroup directionsbox=dlgcreatebox("", directionsbox_items)
 
-// 生成两个uvw输入框
 taggroup diru1label=dlgcreatelabel("[ u v w ]1 ")
 TagGroup diru1field = DLGCreateRealField(0, 5,2).dlgidentifier("diru1field").dlgchangedmethod("diru1orv1changed")
 taggroup diru1group=dlggroupitems(diru1label, diru1field).dlgtablelayout(2,1,0)
@@ -8444,7 +7757,6 @@ taggroup diruvtw2group=dlggroupitems(diru2group, dirv2field, dirw2field).dlgtabl
 
 taggroup diruvtw12group=dlggroupitems(diruvtw1group,diruvtw2group).dlgtablelayout(1,2,0)
 
-// 显示结果
 taggroup dirresultlabel=dlgcreatelabel("Angle:")
 taggroup dirresultfield=DLGCreateLabel( "" + format(0, "%6.1f") + " deg.").DLGIdentifier("dirresultfield")
 taggroup dirresultgroup1=dlggroupitems(dirresultlabel, dirresultfield).dlgtablelayout(2,1,0).dlganchor("West")
@@ -8453,18 +7765,16 @@ taggroup dirresultfield1=DLGCreateLabel( "                      " ).DLGIdentifie
 taggroup dirresultgroup2=dlggroupitems(dirresultlabel1, dirresultfield1).dlgtablelayout(2,1,0).dlganchor("West")
 taggroup dirresultgroup=dlggroupitems(dirresultgroup1, dirresultgroup2).dlgtablelayout(1,2,0)
 
-// 把以上几个组合、添加到direction面板中
 taggroup dirfinalgroup=dlggroupitems(diruvtw12group, dirresultgroup).dlgtablelayout(2,1,0)
 
 directionsbox_items.dlgaddelement(dirfinalgroup)
 directionstab.dlgaddelement(directionsbox)
 directionstab.dlgaddelement(crystbuttonsgroup)
 
-//--------------- 接下来是Indices列表   ---------------
+//--------------- 4. Indices sub-pannel   ---------------
 taggroup Indicesbox_items
 taggroup Indicesbox=dlgcreatebox("", Indicesbox_items)
 
-// 生成两个uvw输入框
 taggroup Indlabel1=dlgcreatelabel("[ u v w ] ")
 TagGroup Indfield1 = DLGCreateStringField("0,0,0", 9).dlgidentifier("Indfield1")
 TagGroup runButton1=DLGCreatePushButton(">>","RunButton1")
@@ -8487,18 +7797,15 @@ TagGroup runButton4=DLGCreatePushButton(">>","RunButton4")
 taggroup Indgroup4=dlggroupitems(Indlabel4, Indfield4,runButton4).dlgtablelayout(3,1,0)
 taggroup Indgroup34=dlggroupitems(Indgroup3, Indgroup4).dlgtablelayout(1,2,0)
 
-// 把以上几个组合、添加到direction面板中
 taggroup Indgroup=dlggroupitems(Indgroup12, Indgroup34).dlgtablelayout(2,1,0)
 
 Indicesbox_items.dlgaddelement(Indgroup)
 Indicestab.dlgaddelement(Indicesbox)
-//directionstab.dlgaddelement(crystbuttonsgroup)
 
-// ---------------  而后是 h<->u 面板  ---------------h2u
+// ---------------  5. h<->u sub-pannel  ---------------
 taggroup zonebox_items
 taggroup zonebox=dlgcreatebox("", zonebox_items)
 
-// 生成两个hkl输入框
 taggroup zoneh1label=dlgcreatelabel("( h k l )")
 TagGroup zoneh1field = DLGCreateRealField(0, 5,2).dlgidentifier("zoneh1field").dlgchangedmethod("zonehork1changed")
 taggroup zoneh1group=dlggroupitems(zoneh1label, zoneh1field).dlgtablelayout(2,1,0)
@@ -8515,40 +7822,35 @@ taggroup zonehkil2group=dlggroupitems(zoneh2group, zonek2field, zonel2field).dlg
 
 taggroup zonehkil12group=dlggroupitems(zonehkil1group,zonehkil2group).dlgtablelayout(1,2,0)
 
-// 显示结果
 taggroup zoneresultlabel=dlgcreatelabel("[u v w]")
-taggroup zoneresultfield=DLGCreateLabel(" 0, 0, 0 " ).DLGIdentifier("zoneresultfield")
+taggroup zoneresultfield=DLGCreateLabel("    0,    0,    0 " ).DLGIdentifier("zoneresultfield")
 taggroup zoneresultgroup=dlggroupitems(zoneresultlabel, zoneresultfield).dlgtablelayout(2,1,0).dlganchor("West")
 taggroup zoneresultlabel1=dlgcreatelabel("( h k l )")
-taggroup zoneresultfield1=DLGCreateLabel(" 0, 0, 0 " ).DLGIdentifier("zoneresultfield1")
+taggroup zoneresultfield1=DLGCreateLabel("    0,    0,    0 " ).DLGIdentifier("zoneresultfield1")
 taggroup zoneresultgroup1=dlggroupitems(zoneresultlabel1, zoneresultfield1).dlgtablelayout(2,1,0).dlganchor("West")
 
 taggroup zoneresultgroup2=dlggroupitems(zoneresultgroup, zoneresultgroup1).dlgtablelayout(1,2,0)
 
-// 把以上几个组合、添加到zone面板中
 taggroup zonefinalgroup=dlggroupitems(zonehkil12group, zoneresultgroup2).dlgtablelayout(2,1,0)
 
 zonebox_items.dlgaddelement(zonefinalgroup)
 zonestab.dlgaddelement(zonebox)
 zonestab.dlgaddelement(crystbuttonsgroup)
 
-// ---------------  最后是Lattice 面板   ---------------  
+// ---------------  6. Lattice sub-pannel   ---------------  
 taggroup Latticebox_items
 taggroup Latticebox=dlgcreatebox("", Latticebox_items)
 
-//生成两按钮
 TagGroup peakbutton=DLGCreatePushButton("Peak","PeakButton").dlginternalpadding(2,0).dlgexternalpadding(2,0)
 TagGroup Spotbutton=DLGCreatePushButton("Spot","SpotButton").dlginternalpadding(2,0).dlgexternalpadding(0,0)
 TagGroup FindLatticeButton=DLGCreatePushButton("Calc.","FindLatticeButton").dlginternalpadding(2,0).dlgexternalpadding(2,0)
 taggroup Buttongroup=dlggroupitems(peakbutton, Spotbutton,FindLatticeButton).dlgtablelayout(3,1,0)
 Latticebox_items.dlgaddelement(Buttongroup)
 
-//生成d输入框
 taggroup dlabel=dlgcreatelabel("d (A):")
 taggroup dfield=DLGCreateRealField(0, 9,5).DLGIdentifier("dfield").dlgchangedmethod("dfieldChanged")
 taggroup dgroup=dlggroupitems(dlabel,dfield).dlgtablelayout(2,1,0)
 
-// 生成hkl输入框
 taggroup Latticelabel=dlgcreatelabel("( h k l )")
 TagGroup Latticehfield = DLGCreateRealField(0, 5,2).dlgidentifier("Latticehfield").dlgchangedmethod("Latticehfieldchanged")
 TagGroup Latticekfield = DLGCreateRealField(0, 5,2).dlgidentifier("Latticekfield").dlgchangedmethod("Latticehfieldchanged")
@@ -8560,7 +7862,6 @@ taggroup Latticegroup1=dlggroupitems(dgroup,Latticehklgroup).dlgtablelayout(2,1,
 Latticebox_items.dlgaddelement(Latticegroup1)
 Latticetab.dlgaddelement(Latticebox)
 
-//把以上组件添加到CreateCalculatorBoxs中，组合后把三大组件添加到Crystalbox，最后添加到CrystalTools中
 CreateCalculatorBoxs.DLGAddElement(crysttablist)
 TagGroup Crystalbox=DLGGroupItems(CreateLatticeBoxs,CreateIndexingBoxs,CreateProfileBoxs,CreateCalculatorBoxs).DLGtablelayout(1,4,0)	
 CrystalTools.DLGAddElement(Crystalbox)
@@ -8577,7 +7878,7 @@ Return CrystalTools
 		TagGroup DialogItems = DLGCreateDialog("Tabbed")
 		DialogItems.DLGAddElement(Tabs)
 		
-		DialogItems.DLGAddElement(dlgcreatelabel("H. L. Shi (honglongshi@outlook.com), MUC, v1.0, Jan. 2017")).dlgexternalpadding(0,5)
+		DialogItems.DLGAddElement(dlgcreatelabel("H. L. Shi (honglongshi@outlook.com), MUC, v1.1, Mar. 2019")).dlgexternalpadding(0,5)
 		Return DialogItems
 		}
 		
@@ -8596,8 +7897,18 @@ number xpos, ypos
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position X",xpos)
 getpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position Y",ypos)
 
-//UI位置
-		if(xpos!=0 && ypos!=0) 
-			{
-				windowsetframeposition(dialogwin, xpos, ypos)
-			}
+//Positions of GUI
+number screenwidth,screenheight
+GetScreenSize(screenwidth,screenheight)
+
+if(xpos>=142&&xpos<screenwidth&& ypos>=24&&ypos<screenheight) 
+{
+windowsetframeposition(dialogwin, xpos, ypos)
+}
+	
+else
+{
+windowsetframeposition(dialogwin, 142, 24)
+setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position X",142)
+setpersistentnumbernote("ElectronDiffraction Tools:Crystal Tools:Default:Window position Y",24)		
+}
